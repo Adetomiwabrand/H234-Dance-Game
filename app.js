@@ -29,11 +29,23 @@ const DIFFICULTY_WINDOWS = {
   HARD: { perfect: 100, good: 200 }
 };
 
+// Lane count scales with difficulty: fewer choices on EASY, more on HARD.
+const LANE_SYMBOLS = {
+  EASY: ['←', '→'],
+  MEDIUM: ['←', '↑', '→'],
+  HARD: ['←', '↑', '↓', '→']
+};
+const LANE_KEYS = {
+  EASY: ['ArrowLeft', 'ArrowRight'],
+  MEDIUM: ['ArrowLeft', 'ArrowUp', 'ArrowRight'],
+  HARD: ['ArrowLeft', 'ArrowUp', 'ArrowDown', 'ArrowRight']
+};
+
 // SLOW_FACTOR stretches the whole chart in time — bigger gaps between notes,
 // more warning before each one arrives. 1.7x turns the original ~250-500ms
 // note spacing into ~425-850ms, which is much easier to read and react to.
 const SLOW_FACTOR = 1.7;
-const chart = [[0,1100],[1,1400],[2,1700],[3,2000],[0,2300],[2,2550],[1,2800],[3,3100],[3,3500],[2,3800],
+const RAW_CHART = [[0,1100],[1,1400],[2,1700],[3,2000],[0,2300],[2,2550],[1,2800],[3,3100],[3,3500],[2,3800],
   [0,4100],[1,4400],[0,4700],[1,4950],[3,5200],[2,5450],[0,5900],[1,6200],[0,6450],[3,6700],
   [2,7000],[1,7300],[3,7600],[0,7900],[1,8400],[2,8700],[3,9000],[2,9300],[1,9600],[0,9900],
   [3,10200],[0,10500],[2,11000],[3,11300],[1,11600],[0,11900],[3,12200],[2,12500],[1,12800],[0,13100]
@@ -42,6 +54,13 @@ const BATTLE_LENGTH_MS = Math.round(14500 * SLOW_FACTOR);
 // How long (ms) a note takes to fall from the top of the lane to the target —
 // bigger means notes appear earlier and drift down slower, giving more reaction time.
 const NOTE_TRAVEL_MS = Math.round(2400 * SLOW_FACTOR);
+
+// Same authored rhythm for every difficulty, remapped onto however many lanes
+// that difficulty uses (original lane 0-3 wraps via modulo) so timing stays fair.
+function chartFor(difficulty) {
+  const laneCount = LANE_SYMBOLS[difficulty].length;
+  return RAW_CHART.map(n => ({ lane: n.lane % laneCount, hitTimeMs: n.hitTimeMs }));
+}
 
 /* ---------- state ---------- */
 const saved = (() => { try { return JSON.parse(localStorage.getItem('h234_state') || '{}'); } catch { return {}; } })();
@@ -267,6 +286,8 @@ function createHero() {
 /* ---------- battle ---------- */
 function battleScreen() {
   const h = currentHero();
+  const loc = locations.find(l => l.id === state.location) || locations[0];
+  const symbols = LANE_SYMBOLS[loc.difficulty] || LANE_SYMBOLS.MEDIUM;
   app.innerHTML = frame('H234 // DANCE BATTLE', `<section class="battle">
     <div class="battle-hud">
       <div><span>SCORE</span><strong id="score">${battle?.score || 0}</strong></div>
@@ -275,30 +296,33 @@ function battleScreen() {
     </div>
     <div class="stage">
       <img class="battle-hero" src="${h.image}">
-      <div class="lanes">${[0, 1, 2, 3].map(l => `<div class="lane" data-lane="${l}"><div class="target">${['←', '↑', '↓', '→'][l]}</div></div>`).join('')}</div>
+      <div class="lanes" style="grid-template-columns:repeat(${symbols.length},1fr)">${symbols.map((sym, l) => `<div class="lane" data-lane="${l}"><div class="target">${sym}</div></div>`).join('')}</div>
       <div id="feedback" class="feedback"></div>
     </div>
-    <div class="battle-controls">${['←', '↑', '↓', '→'].map((x, i) => `<button data-lane-btn="${i}">${x}</button>`).join('')}</div>
+    <div class="battle-controls">${symbols.map((sym, l) => `<button class="lane-btn" data-lane-btn="${l}">${sym}</button>`).join('')}</div>
     <div class="progress"><div id="progress-fill"></div></div>
     <small>${state.sound ? 'AUDIO ACTIVE' : 'AUDIO OFF'} // HIT THE ARROWS ON THE BEAT</small>
   </section>`);
-  startBattle();
+  startBattle(loc, symbols);
 }
 
-function startBattle() {
-  if (battle?.timer) clearInterval(battle.timer);
-  const loc = locations.find(l => l.id === state.location) || locations[0];
+function startBattle(loc, symbols) {
+  if (battle?.raf) cancelAnimationFrame(battle.raf);
   battle = {
     start: performance.now(), elapsed: 0, score: 0, combo: 0, maxCombo: 0,
-    counts: { PERFECT: 0, GOOD: 0, MISS: 0 }, used: new Set(), timer: null,
-    windows: DIFFICULTY_WINDOWS[loc.difficulty] || DIFFICULTY_WINDOWS.MEDIUM
+    counts: { PERFECT: 0, GOOD: 0, MISS: 0 }, used: new Set(), raf: null,
+    windows: DIFFICULTY_WINDOWS[loc.difficulty] || DIFFICULTY_WINDOWS.MEDIUM,
+    chart: chartFor(loc.difficulty), symbols, noteEls: new Map()
   };
   if (state.sound) startMusic();
-  battle.timer = setInterval(() => {
+  const tick = () => {
+    if (!battle) return;
     battle.elapsed = performance.now() - battle.start;
     updateNotes();
-    if (battle.elapsed >= BATTLE_LENGTH_MS) finishBattle();
-  }, 16);
+    if (battle.elapsed >= BATTLE_LENGTH_MS) { finishBattle(); return; }
+    battle.raf = requestAnimationFrame(tick);
+  };
+  battle.raf = requestAnimationFrame(tick);
 }
 
 function updateNotes() {
@@ -307,42 +331,68 @@ function updateNotes() {
   if (score) score.textContent = battle.score.toLocaleString();
   if (combo) combo.textContent = battle.combo + 'X';
   if (fill) fill.style.width = Math.min(100, battle.elapsed / BATTLE_LENGTH_MS * 100) + '%';
-  document.querySelectorAll('.lane').forEach((el, lane) => {
-    el.querySelectorAll('.note').forEach(n => n.remove());
-    chart.forEach((n, i) => {
-      if (n.lane === lane && !battle.used.has(i) && n.hitTimeMs > battle.elapsed - 100 && n.hitTimeMs < battle.elapsed + NOTE_TRAVEL_MS) {
-        const d = document.createElement('div');
-        d.className = 'note';
-        d.style.bottom = Math.max(2, Math.min(92, (n.hitTimeMs - battle.elapsed) / NOTE_TRAVEL_MS * 90)) + '%';
-        d.textContent = ['←', '↑', '↓', '→'][lane];
-        d.dataset.note = i;
-        el.appendChild(d);
-      }
-    });
+
+  const laneEls = document.querySelectorAll('.lane');
+  if (!laneEls.length) return;
+
+  battle.chart.forEach((n, i) => {
+    if (battle.used.has(i)) return;
+    // Auto-miss: the note has scrolled past the target with no hit registered.
+    if (n.hitTimeMs < battle.elapsed - battle.windows.good) {
+      battle.used.add(i);
+      battle.combo = 0; battle.counts.MISS++;
+      const el = battle.noteEls.get(i);
+      if (el) { el.remove(); battle.noteEls.delete(i); }
+      return;
+    }
+    const visible = n.hitTimeMs > battle.elapsed - 100 && n.hitTimeMs < battle.elapsed + NOTE_TRAVEL_MS;
+    let el = battle.noteEls.get(i);
+    if (visible && !el) {
+      el = document.createElement('div');
+      el.className = 'note';
+      el.textContent = battle.symbols[n.lane];
+      laneEls[n.lane]?.appendChild(el);
+      battle.noteEls.set(i, el);
+    } else if (!visible && el) {
+      el.remove();
+      battle.noteEls.delete(i);
+    }
+    if (el) {
+      const pct = Math.max(2, Math.min(92, (n.hitTimeMs - battle.elapsed) / NOTE_TRAVEL_MS * 90));
+      // Reused element updated in place each frame (no more per-frame
+      // createElement/remove churn) is what actually fixes the choppiness —
+      // `bottom` as % of the lane is the correct unit here since a translateY
+      // percentage would be relative to the note's own tiny size, not the lane.
+      el.style.bottom = pct + '%';
+    }
   });
 }
 
 function hit(lane) {
   if (!battle) return;
   let best = -1, delta = 99999;
-  chart.forEach((n, i) => {
+  battle.chart.forEach((n, i) => {
     if (battle.used.has(i) || n.lane !== lane) return;
     const d = Math.abs(n.hitTimeMs - battle.elapsed);
     if (d < delta) { delta = d; best = i; }
   });
   const w = battle.windows;
   let j = 'MISS';
-  if (best >= 0 && delta <= w.good) { battle.used.add(best); j = delta <= w.perfect ? 'PERFECT' : 'GOOD'; }
+  if (best >= 0 && delta <= w.good) {
+    battle.used.add(best);
+    const el = battle.noteEls.get(best);
+    if (el) { el.remove(); battle.noteEls.delete(best); }
+    j = delta <= w.perfect ? 'PERFECT' : 'GOOD';
+  }
   const f = document.getElementById('feedback');
   if (f) { f.textContent = j; f.className = 'feedback ' + j; setTimeout(() => { if (f) f.textContent = ''; }, 220); }
   if (j === 'MISS') { battle.combo = 0; battle.counts.MISS++; }
   else { battle.combo++; battle.maxCombo = Math.max(battle.maxCombo, battle.combo); battle.counts[j]++; battle.score += (j === 'PERFECT' ? 1000 : 500) * Math.max(1, battle.combo); }
-  updateNotes();
 }
 
 function finishBattle() {
   if (!battle) return;
-  clearInterval(battle.timer);
+  if (battle.raf) cancelAnimationFrame(battle.raf);
   stopMusic();
   const total = battle.counts.PERFECT + battle.counts.GOOD + battle.counts.MISS;
   const accuracy = total ? Math.round((battle.counts.PERFECT + battle.counts.GOOD * .5) / total * 100) : 0;
@@ -434,13 +484,30 @@ app.addEventListener('change', e => {
 });
 
 window.addEventListener('keydown', e => {
-  if (state.screen !== 'battle') return;
-  const map = { ArrowLeft: 0, ArrowUp: 1, ArrowDown: 2, ArrowRight: 3 };
-  if (map[e.key] !== undefined) { e.preventDefault(); hit(map[e.key]); }
+  if (state.screen !== 'battle' || !battle) return;
+  const lane = battle.symbols && LANE_KEYS[locations.find(l => l.id === state.location)?.difficulty]?.indexOf(e.key);
+  if (lane === undefined || lane < 0) return;
+  e.preventDefault();
+  hit(lane);
+  // Flash the matching on-screen button so keyboard players get the same
+  // "it registered" feedback as touch/mouse players.
+  const btn = document.querySelector(`[data-lane-btn="${lane}"]`);
+  if (btn) { btn.classList.add('pressed'); clearTimeout(btn._pressTimer); btn._pressTimer = setTimeout(() => btn.classList.remove('pressed'), 120); }
 });
 app.addEventListener('pointerdown', e => {
   const b = e.target.closest('[data-lane-btn]');
-  if (b && state.screen === 'battle') hit(Number(b.dataset.laneBtn));
+  if (b && state.screen === 'battle') { b.classList.add('pressed'); hit(Number(b.dataset.laneBtn)); }
+});
+app.addEventListener('pointerup', e => {
+  const b = e.target.closest('[data-lane-btn]');
+  if (b) b.classList.remove('pressed');
+});
+app.addEventListener('pointerleave', e => {
+  const b = e.target.closest?.('[data-lane-btn]');
+  if (b) b.classList.remove('pressed');
+}, true);
+app.addEventListener('pointercancel', e => {
+  document.querySelectorAll('.lane-btn.pressed').forEach(b => b.classList.remove('pressed'));
 });
 
 render();
