@@ -1,0 +1,7 @@
+{
+  "name":"h234-dance-game-mvp",
+  "version":"0.1.0",
+  "private":true,
+  "description":"H234 Dance Game five-hour browser MVP",
+  "scripts":{"dev":"python3 -m http.server 4173","start":"python3 -m http.server 4173"}
+}
