@@ -313,22 +313,27 @@ function battleScreen() {
   const h = currentHero();
   const loc = locations.find(l => l.id === state.location) || locations[0];
   const symbols = LANE_SYMBOLS[loc.difficulty] || LANE_SYMBOLS.MEDIUM;
-  const side = sym => sym === '←' ? 'left' : sym === '→' ? 'right' : 'forward';
+  // Prompt (cue) and controls (input) are deliberately separate elements now —
+  // prompt tiles up top just flash, control buttons down below are what's tappable.
   app.innerHTML = frame('H234 // DANCE BATTLE', `<section class="battle">
     <div class="battle-hud">
       <div><span>SCORE</span><strong id="score">${battle?.score || 0}</strong></div>
       <div><span>COMBO</span><strong id="combo">${battle?.combo || 0}X</strong></div>
       <button data-action="quit">QUIT</button>
     </div>
-    <div class="board">
-      <div class="board-floor"></div>
-      ${symbols.map((sym, l) => `<button class="zone zone-${side(sym)}" data-zone="${l}" data-lane-btn="${l}"><span class="zone-arrow">${sym}</span></button>`).join('')}
-      <div class="board-hero-wrap"><img class="board-hero" id="boardHero" src="${h.image}"></div>
+    <div class="prompt-row">
+      ${symbols.map((sym, l) => `<div class="prompt-tile" data-prompt="${l}">${sym}</div>`).join('')}
+    </div>
+    <div class="hero-stage">
+      <img class="board-hero" id="boardHero" src="${h.image}">
       <div id="feedback" class="feedback"></div>
+    </div>
+    <div class="controls-row">
+      ${symbols.map((sym, l) => `<button class="ctrl-btn" data-lane-btn="${l}">${sym}</button>`).join('')}
     </div>
     <div class="progress"><div id="progress-fill"></div></div>
     <small>${state.sound ? 'AUDIO ACTIVE' : 'AUDIO OFF'} // JUMP TO THE LIT SIDE ON THE BEAT</small>
-  </section>`);
+  </section>`, true);
   startBattle(loc, symbols);
 }
 
@@ -339,7 +344,8 @@ function startBattle(loc, symbols) {
     counts: { PERFECT: 0, GOOD: 0, MISS: 0 }, used: new Set(), raf: null,
     windows: DIFFICULTY_WINDOWS[loc.difficulty] || DIFFICULTY_WINDOWS.MEDIUM,
     chart: chartFor(loc.difficulty), symbols, length: battleLengthFor(loc.difficulty),
-    zoneEls: symbols.map((_, l) => document.querySelector(`[data-zone="${l}"]`))
+    promptEls: symbols.map((_, l) => document.querySelector(`[data-prompt="${l}"]`)),
+    controlEls: symbols.map((_, l) => document.querySelector(`[data-lane-btn="${l}"]`))
   };
   if (state.sound) startMusic(loc);
   const tick = () => {
@@ -359,9 +365,9 @@ function updateBoard() {
   if (combo) combo.textContent = battle.combo + 'X';
   if (fill) fill.style.width = Math.min(100, battle.elapsed / battle.length * 100) + '%';
 
-  // Live-mirror: a side is "lit" for the same window either side of its exact
-  // beat, so the fixed zone panels just flash rather than notes falling —
-  // reusing the same chart/windows/auto-miss logic as before under the hood.
+  // Live-mirror: a side is "lit" on the prompt row for the same window either
+  // side of its exact beat — reusing the same chart/windows/auto-miss logic
+  // as before, just driving a separate (non-interactive) row of tiles now.
   const activeLane = new Array(battle.symbols.length).fill(false);
   battle.chart.forEach((n, i) => {
     if (battle.used.has(i)) return;
@@ -373,7 +379,7 @@ function updateBoard() {
     }
     if (Math.abs(diff) <= battle.windows.good) activeLane[n.lane] = true;
   });
-  battle.zoneEls.forEach((el, l) => el && el.classList.toggle('lit', !!activeLane[l]));
+  battle.promptEls.forEach((el, l) => el && el.classList.toggle('lit', !!activeLane[l]));
 }
 
 function showFeedback(j) {
@@ -404,12 +410,15 @@ function hit(lane) {
   if (best >= 0 && delta <= w.good) { battle.used.add(best); j = delta <= w.perfect ? 'PERFECT' : 'GOOD'; }
   showFeedback(j);
   animateHero(lane, j);
-  const zoneEl = battle.zoneEls[lane];
-  if (zoneEl) {
-    zoneEl.classList.remove('lit');
+  const promptEl = battle.promptEls[lane];
+  if (promptEl) promptEl.classList.remove('lit');
+  // Judgment flash lands on the control button — that's where the thumb is,
+  // so that's where the result should read.
+  const ctrlEl = battle.controlEls[lane];
+  if (ctrlEl) {
     const hitCls = 'hit-' + j.toLowerCase();
-    zoneEl.classList.add(hitCls);
-    setTimeout(() => zoneEl.classList.remove(hitCls), 220);
+    ctrlEl.classList.add(hitCls);
+    setTimeout(() => ctrlEl.classList.remove(hitCls), 220);
   }
   if (j === 'MISS') { battle.combo = 0; battle.counts.MISS++; }
   else { battle.combo++; battle.maxCombo = Math.max(battle.maxCombo, battle.combo); battle.counts[j]++; battle.score += (j === 'PERFECT' ? 1000 : 500) * Math.max(1, battle.combo); }
@@ -451,7 +460,7 @@ function settings() {
   app.innerHTML = frame('H234 // SETTINGS', `<section class="panel-screen settings">
     <div class="screen-heading"><button class="icon-btn" data-action="map">‹</button><div><span>SYSTEM CONFIG</span><h1>SETTINGS</h1></div></div>
     <div class="setting-row"><div><strong>SOUND</strong><small>Music and rhythm audio</small></div><button data-action="sound">${state.sound ? 'ON' : 'OFF'}</button></div>
-    <div class="setting-row"><div><strong>CONTROLS</strong><small>Arrow keys or touch buttons during battle</small></div><span>← ↑ ↓ →</span></div>
+    <div class="setting-row"><div><strong>CONTROLS</strong><small>Arrow keys or on-screen buttons during battle</small></div><span>← ↑ →</span></div>
     <div class="setting-row"><div><strong>RESET HERO</strong><small>Clear locally stored custom hero</small></div><button data-action="reset">RESET</button></div>
   </section>`);
 }
@@ -552,7 +561,7 @@ app.addEventListener('pointerleave', e => {
   if (b) b.classList.remove('pressed');
 }, true);
 app.addEventListener('pointercancel', e => {
-  document.querySelectorAll('.zone.pressed').forEach(b => b.classList.remove('pressed'));
+  document.querySelectorAll('.ctrl-btn.pressed').forEach(b => b.classList.remove('pressed'));
 });
 
 render();
