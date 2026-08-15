@@ -41,9 +41,9 @@ const locations = [
 ];
 
 const DIFFICULTY_WINDOWS = {
-  EASY: { perfect: 180, good: 320 },
-  MEDIUM: { perfect: 140, good: 260 },
-  HARD: { perfect: 100, good: 200 }
+  EASY: { perfect: 220, good: 380 },
+  MEDIUM: { perfect: 170, good: 300 },
+  HARD: { perfect: 130, good: 240 }
 };
 
 // Board sides scale with difficulty: 2 for Easy (left/right), 3 for Medium
@@ -61,12 +61,12 @@ const LANE_KEYS = {
   HARD: ['ArrowLeft', 'ArrowUp', 'ArrowRight']
 };
 // <1 compresses the beat spacing (faster/harder), >1 stretches it (slower/easier).
-const DIFFICULTY_SPEED = { EASY: 1.2, MEDIUM: 1.0, HARD: 0.8 };
+const DIFFICULTY_SPEED = { EASY: 1.4, MEDIUM: 1.15, HARD: 0.95 };
 
 // SLOW_FACTOR stretches the whole chart in time — bigger gaps between notes,
-// more warning before each one arrives. 1.7x turns the original ~250-500ms
-// note spacing into ~425-850ms, which is much easier to read and react to.
-const SLOW_FACTOR = 1.7;
+// more warning before each one arrives. 2.1x turns the original ~250-500ms
+// note spacing into ~525-1050ms, giving generous reaction time across the board.
+const SLOW_FACTOR = 2.1;
 const RAW_CHART = [[0,1100],[1,1400],[2,1700],[3,2000],[0,2300],[2,2550],[1,2800],[3,3100],[3,3500],[2,3800],
   [0,4100],[1,4400],[0,4700],[1,4950],[3,5200],[2,5450],[0,5900],[1,6200],[0,6450],[3,6700],
   [2,7000],[1,7300],[3,7600],[0,7900],[1,8400],[2,8700],[3,9000],[2,9300],[1,9600],[0,9900],
@@ -99,6 +99,7 @@ const state = {
   result: null
 };
 let audioCtx = null, audioTimer = null, battle = null;
+let lastHeroTap = { id: null, time: 0 };
 const app = document.getElementById('app');
 
 function save() { try { localStorage.setItem('h234_state', JSON.stringify({ location: state.location, hero: state.hero, custom: state.custom, sound: state.sound })); } catch {} }
@@ -120,11 +121,11 @@ function render() {
 /* ---------- boot ---------- */
 function boot() {
   app.innerHTML = frame('H234 // ARCADE NETWORK', `<section class="boot"><div class="boot-card">
-    <img class="level-one" src="${A}level-one.jpeg">
-    <img class="enter-house" src="${A}enter-the-house.jpeg">
-    <p>MAP-BASED RHYTHM GAME</p>
+    <img class="level-one" src="${A}h234-logo-blue.png">
+    <p class="enter-house-text">ARE YOU READY TO PLAY</p>
+    <p>FREEWORLD RHYTHM PLAYGROUND</p>
     <button class="primary huge" data-action="start">▶ ENTER THE HOUSE</button>
-    <small>ARROW KEYS // SOUND ON</small>
+    <small>JUMP LEFT, FORWARD, OR RIGHT ON THE BEAT // ${state.sound ? 'SOUND ON' : 'SOUND OFF'}</small>
   </div></section>`);
 }
 
@@ -278,14 +279,15 @@ function initMapPanZoom() {
 /* ---------- hero select ---------- */
 function heroSelect() {
   const hero = currentHero();
-  app.innerHTML = frame('H234 // HERO SELECT', `<section class="panel-screen">
-    <div class="screen-heading"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR HERO</span><h1>HERO SELECT</h1></div></div>
-    <div class="hero-grid">
+  app.innerHTML = frame('H234 // HERO SELECT', `<section class="hero-select">
+    <div class="screen-heading compact"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR HERO</span><h1>HERO SELECT</h1></div></div>
+    <div class="howto"><strong>HOW TO PLAY</strong><p>Jump ← LEFT, ↑ FORWARD, or → RIGHT to match the lit side. Time it to the beat — chain hits for a bigger combo. Double-tap a hero to select and jump straight in.</p></div>
+    <div class="hero-carousel" id="heroCarousel">
       ${heroes.map(h => `<button class="hero-card ${hero.id === h.id ? 'chosen' : ''}" data-hero="${h.id}"><img src="${h.image}"><strong>${h.name}</strong><small>PRESET HERO</small></button>`).join('')}
       <button class="hero-card create-card ${hero.src === 'custom' ? 'chosen' : ''}" data-action="create"><div class="upload-orb">↑</div><strong>CREATE YOUR HERO</strong><small>UPLOAD YOUR EMAILED CHARACTER</small></button>
     </div>
-    <div class="selection"><div><span>SELECTED</span><strong>${hero.name}</strong></div><button class="primary" data-action="battle">CONTINUE →</button></div>
-  </section>`);
+    <div class="selection"><div><span>SELECTED</span><strong id="selectedHeroName">${hero.name}</strong></div><button class="primary" data-action="battle">CONTINUE →</button></div>
+  </section>`, true);
 }
 
 /* ---------- create hero ---------- */
@@ -520,7 +522,20 @@ app.addEventListener('click', e => {
     return;
   }
   const hero = e.target.closest('[data-hero]')?.dataset.hero;
-  if (hero) { state.hero = heroes.find(h => h.id === hero) || heroes[0]; render(); return; }
+  if (hero) {
+    state.hero = heroes.find(h => h.id === hero) || heroes[0];
+    // Double-tap/double-click the same card: select AND jump straight into
+    // battle, instead of select-then-hunt-for-the-continue-button.
+    const now = Date.now();
+    if (lastHeroTap.id === hero && now - lastHeroTap.time < 400) {
+      lastHeroTap = { id: null, time: 0 };
+      state.screen = 'battle';
+    } else {
+      lastHeroTap = { id: hero, time: now };
+    }
+    render();
+    return;
+  }
   const loc = e.target.closest('[data-location]')?.dataset.location;
   if (loc) { state.location = loc; render(); }
 });
