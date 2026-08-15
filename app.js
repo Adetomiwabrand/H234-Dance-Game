@@ -2,10 +2,27 @@
 const A = 'src/assets/';
 
 const heroes = [
-  { id: 'juju', name: 'JUJU', src: 'preset', image: A + 'hero-juju.png' },
-  { id: 'bad', name: 'BAD', src: 'preset', image: A + 'hero-bad.png' },
-  { id: 'hero-3', name: 'PLAYER 03', src: 'preset', image: A + 'hero-3.png' },
-  { id: 'hero-4', name: 'PLAYER 04', src: 'preset', image: A + 'hero-4.png' }
+  { id: '7th-rebel', name: '7TH REBEL', src: 'preset', image: A + 'heroes/7th-rebel.png' },
+  { id: 'ariana', name: 'ARIANA', src: 'preset', image: A + 'heroes/ariana.png' },
+  { id: 'bade', name: 'BADE', src: 'preset', image: A + 'heroes/bade.png' },
+  { id: 'curl-queen', name: 'CURL QUEEN', src: 'preset', image: A + 'heroes/curl-queen.png' },
+  { id: 'd-lulu', name: 'D LULU', src: 'preset', image: A + 'heroes/d-lulu.png' },
+  { id: 'deola', name: 'DEOLA', src: 'preset', image: A + 'heroes/deola.png' },
+  { id: 'jamie-black', name: 'JAMIE BLACK', src: 'preset', image: A + 'heroes/jamie-black.png' },
+  { id: 'jasmin', name: 'JASMIN', src: 'preset', image: A + 'heroes/jasmin.png' },
+  { id: 'hero-juju', name: 'JUJU', src: 'preset', image: A + 'heroes/juju.png' },
+  { id: 'lizzie', name: 'LIZZIE', src: 'preset', image: A + 'heroes/lizzie.png' },
+  { id: 'mummy-yin', name: 'MUMMY YIN', src: 'preset', image: A + 'heroes/mummy-yin.png' },
+  { id: 'oko-madam', name: 'OKO MADAM', src: 'preset', image: A + 'heroes/oko-madam.png' },
+  { id: 'oma', name: 'OMA', src: 'preset', image: A + 'heroes/oma.png' },
+  { id: 'oyin', name: 'OYIN', src: 'preset', image: A + 'heroes/oyin.png' },
+  { id: 'queen', name: 'QUEEN', src: 'preset', image: A + 'heroes/queen.png' },
+  { id: 'rahimat', name: 'RAHIMAT', src: 'preset', image: A + 'heroes/rahimat.png' },
+  { id: 'salma', name: 'SALMA', src: 'preset', image: A + 'heroes/salma.png' },
+  { id: 'stylish-sinner-and-knd', name: 'STYLISH SINNER & KND', src: 'preset', image: A + 'heroes/stylish-sinner-and-knd.png' },
+  { id: 'ukiyo', name: 'UKIYO', src: 'preset', image: A + 'heroes/ukiyo.png' },
+  { id: 'xaddy', name: 'XADDY', src: 'preset', image: A + 'heroes/xaddy.png' },
+  { id: 'zantii', name: 'ZANTII', src: 'preset', image: A + 'heroes/zantii.png' }
 ];
 
 // Coordinates are % of the real map artwork (850x680), hand-mapped to the
@@ -29,17 +46,22 @@ const DIFFICULTY_WINDOWS = {
   HARD: { perfect: 100, good: 200 }
 };
 
-// Lane count scales with difficulty: fewer choices on EASY, more on HARD.
+// Board sides scale with difficulty: 2 for Easy (left/right), 3 for Medium
+// and Hard (left/forward/right — "forward" is the jump-toward-camera side).
+// Hard is capped at 3 (no natural 4th direction), so it stays harder purely
+// through tighter timing windows and a faster cadence (DIFFICULTY_SPEED below).
 const LANE_SYMBOLS = {
   EASY: ['←', '→'],
   MEDIUM: ['←', '↑', '→'],
-  HARD: ['←', '↑', '↓', '→']
+  HARD: ['←', '↑', '→']
 };
 const LANE_KEYS = {
   EASY: ['ArrowLeft', 'ArrowRight'],
   MEDIUM: ['ArrowLeft', 'ArrowUp', 'ArrowRight'],
-  HARD: ['ArrowLeft', 'ArrowUp', 'ArrowDown', 'ArrowRight']
+  HARD: ['ArrowLeft', 'ArrowUp', 'ArrowRight']
 };
+// <1 compresses the beat spacing (faster/harder), >1 stretches it (slower/easier).
+const DIFFICULTY_SPEED = { EASY: 1.2, MEDIUM: 1.0, HARD: 0.8 };
 
 // SLOW_FACTOR stretches the whole chart in time — bigger gaps between notes,
 // more warning before each one arrives. 1.7x turns the original ~250-500ms
@@ -50,16 +72,19 @@ const RAW_CHART = [[0,1100],[1,1400],[2,1700],[3,2000],[0,2300],[2,2550],[1,2800
   [2,7000],[1,7300],[3,7600],[0,7900],[1,8400],[2,8700],[3,9000],[2,9300],[1,9600],[0,9900],
   [3,10200],[0,10500],[2,11000],[3,11300],[1,11600],[0,11900],[3,12200],[2,12500],[1,12800],[0,13100]
 ].map(([lane, hitTimeMs]) => ({ lane, hitTimeMs: Math.round(hitTimeMs * SLOW_FACTOR) }));
-const BATTLE_LENGTH_MS = Math.round(14500 * SLOW_FACTOR);
-// How long (ms) a note takes to fall from the top of the lane to the target —
-// bigger means notes appear earlier and drift down slower, giving more reaction time.
-const NOTE_TRAVEL_MS = Math.round(2400 * SLOW_FACTOR);
+const BASE_BATTLE_LENGTH_MS = Math.round(14500 * SLOW_FACTOR);
 
-// Same authored rhythm for every difficulty, remapped onto however many lanes
-// that difficulty uses (original lane 0-3 wraps via modulo) so timing stays fair.
+// Same authored rhythm for every difficulty, remapped onto however many
+// board sides that difficulty uses (original lane 0-3 wraps via modulo),
+// then compressed/stretched by DIFFICULTY_SPEED so Hard genuinely feels
+// faster even though it uses the same 3 sides as Medium.
 function chartFor(difficulty) {
   const laneCount = LANE_SYMBOLS[difficulty].length;
-  return RAW_CHART.map(n => ({ lane: n.lane % laneCount, hitTimeMs: n.hitTimeMs }));
+  const speed = DIFFICULTY_SPEED[difficulty] ?? 1;
+  return RAW_CHART.map(n => ({ lane: n.lane % laneCount, hitTimeMs: Math.round(n.hitTimeMs * speed) }));
+}
+function battleLengthFor(difficulty) {
+  return Math.round(BASE_BATTLE_LENGTH_MS * (DIFFICULTY_SPEED[difficulty] ?? 1));
 }
 
 /* ---------- state ---------- */
@@ -254,7 +279,7 @@ function initMapPanZoom() {
 function heroSelect() {
   const hero = currentHero();
   app.innerHTML = frame('H234 // HERO SELECT', `<section class="panel-screen">
-    <div class="screen-heading"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR PLAYER</span><h1>HERO SELECT</h1></div></div>
+    <div class="screen-heading"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR HERO</span><h1>HERO SELECT</h1></div></div>
     <div class="hero-grid">
       ${heroes.map(h => `<button class="hero-card ${hero.id === h.id ? 'chosen' : ''}" data-hero="${h.id}"><img src="${h.image}"><strong>${h.name}</strong><small>PRESET HERO</small></button>`).join('')}
       <button class="hero-card create-card ${hero.src === 'custom' ? 'chosen' : ''}" data-action="create"><div class="upload-orb">↑</div><strong>CREATE YOUR HERO</strong><small>UPLOAD YOUR EMAILED CHARACTER</small></button>
@@ -283,25 +308,26 @@ function createHero() {
   </section>`);
 }
 
-/* ---------- battle ---------- */
+/* ---------- battle: board + live-mirror jump ---------- */
 function battleScreen() {
   const h = currentHero();
   const loc = locations.find(l => l.id === state.location) || locations[0];
   const symbols = LANE_SYMBOLS[loc.difficulty] || LANE_SYMBOLS.MEDIUM;
+  const side = sym => sym === '←' ? 'left' : sym === '→' ? 'right' : 'forward';
   app.innerHTML = frame('H234 // DANCE BATTLE', `<section class="battle">
     <div class="battle-hud">
       <div><span>SCORE</span><strong id="score">${battle?.score || 0}</strong></div>
       <div><span>COMBO</span><strong id="combo">${battle?.combo || 0}X</strong></div>
       <button data-action="quit">QUIT</button>
     </div>
-    <div class="stage">
-      <img class="battle-hero" src="${h.image}">
-      <div class="lanes" style="grid-template-columns:repeat(${symbols.length},1fr)">${symbols.map((sym, l) => `<div class="lane" data-lane="${l}"><div class="target">${sym}</div></div>`).join('')}</div>
+    <div class="board">
+      <div class="board-floor"></div>
+      ${symbols.map((sym, l) => `<button class="zone zone-${side(sym)}" data-zone="${l}" data-lane-btn="${l}"><span class="zone-arrow">${sym}</span></button>`).join('')}
+      <div class="board-hero-wrap"><img class="board-hero" id="boardHero" src="${h.image}"></div>
       <div id="feedback" class="feedback"></div>
     </div>
-    <div class="battle-controls">${symbols.map((sym, l) => `<button class="lane-btn" data-lane-btn="${l}">${sym}</button>`).join('')}</div>
     <div class="progress"><div id="progress-fill"></div></div>
-    <small>${state.sound ? 'AUDIO ACTIVE' : 'AUDIO OFF'} // HIT THE ARROWS ON THE BEAT</small>
+    <small>${state.sound ? 'AUDIO ACTIVE' : 'AUDIO OFF'} // JUMP TO THE LIT SIDE ON THE BEAT</small>
   </section>`);
   startBattle(loc, symbols);
 }
@@ -312,60 +338,57 @@ function startBattle(loc, symbols) {
     start: performance.now(), elapsed: 0, score: 0, combo: 0, maxCombo: 0,
     counts: { PERFECT: 0, GOOD: 0, MISS: 0 }, used: new Set(), raf: null,
     windows: DIFFICULTY_WINDOWS[loc.difficulty] || DIFFICULTY_WINDOWS.MEDIUM,
-    chart: chartFor(loc.difficulty), symbols, noteEls: new Map()
+    chart: chartFor(loc.difficulty), symbols, length: battleLengthFor(loc.difficulty),
+    zoneEls: symbols.map((_, l) => document.querySelector(`[data-zone="${l}"]`))
   };
-  if (state.sound) startMusic();
+  if (state.sound) startMusic(loc);
   const tick = () => {
     if (!battle) return;
     battle.elapsed = performance.now() - battle.start;
-    updateNotes();
-    if (battle.elapsed >= BATTLE_LENGTH_MS) { finishBattle(); return; }
+    updateBoard();
+    if (battle.elapsed >= battle.length) { finishBattle(); return; }
     battle.raf = requestAnimationFrame(tick);
   };
   battle.raf = requestAnimationFrame(tick);
 }
 
-function updateNotes() {
+function updateBoard() {
   if (!battle) return;
   const score = document.querySelector('#score'), combo = document.querySelector('#combo'), fill = document.querySelector('#progress-fill');
   if (score) score.textContent = battle.score.toLocaleString();
   if (combo) combo.textContent = battle.combo + 'X';
-  if (fill) fill.style.width = Math.min(100, battle.elapsed / BATTLE_LENGTH_MS * 100) + '%';
+  if (fill) fill.style.width = Math.min(100, battle.elapsed / battle.length * 100) + '%';
 
-  const laneEls = document.querySelectorAll('.lane');
-  if (!laneEls.length) return;
-
+  // Live-mirror: a side is "lit" for the same window either side of its exact
+  // beat, so the fixed zone panels just flash rather than notes falling —
+  // reusing the same chart/windows/auto-miss logic as before under the hood.
+  const activeLane = new Array(battle.symbols.length).fill(false);
   battle.chart.forEach((n, i) => {
     if (battle.used.has(i)) return;
-    // Auto-miss: the note has scrolled past the target with no hit registered.
-    if (n.hitTimeMs < battle.elapsed - battle.windows.good) {
+    const diff = battle.elapsed - n.hitTimeMs;
+    if (diff > battle.windows.good) {
       battle.used.add(i);
       battle.combo = 0; battle.counts.MISS++;
-      const el = battle.noteEls.get(i);
-      if (el) { el.remove(); battle.noteEls.delete(i); }
       return;
     }
-    const visible = n.hitTimeMs > battle.elapsed - 100 && n.hitTimeMs < battle.elapsed + NOTE_TRAVEL_MS;
-    let el = battle.noteEls.get(i);
-    if (visible && !el) {
-      el = document.createElement('div');
-      el.className = 'note';
-      el.textContent = battle.symbols[n.lane];
-      laneEls[n.lane]?.appendChild(el);
-      battle.noteEls.set(i, el);
-    } else if (!visible && el) {
-      el.remove();
-      battle.noteEls.delete(i);
-    }
-    if (el) {
-      const pct = Math.max(2, Math.min(92, (n.hitTimeMs - battle.elapsed) / NOTE_TRAVEL_MS * 90));
-      // Reused element updated in place each frame (no more per-frame
-      // createElement/remove churn) is what actually fixes the choppiness —
-      // `bottom` as % of the lane is the correct unit here since a translateY
-      // percentage would be relative to the note's own tiny size, not the lane.
-      el.style.bottom = pct + '%';
-    }
+    if (Math.abs(diff) <= battle.windows.good) activeLane[n.lane] = true;
   });
+  battle.zoneEls.forEach((el, l) => el && el.classList.toggle('lit', !!activeLane[l]));
+}
+
+function showFeedback(j) {
+  const f = document.getElementById('feedback');
+  if (f) { f.textContent = j; f.className = 'feedback ' + j; setTimeout(() => { if (f) f.textContent = ''; }, 220); }
+}
+
+function animateHero(lane, judgment) {
+  const hero = document.getElementById('boardHero');
+  if (!hero || !battle) return;
+  const sym = battle.symbols[lane];
+  const cls = judgment === 'MISS' ? 'anim-miss' : (sym === '←' ? 'anim-left' : sym === '→' ? 'anim-right' : 'anim-forward');
+  hero.classList.remove('anim-left', 'anim-right', 'anim-forward', 'anim-miss');
+  void hero.offsetWidth; // restart the CSS animation even if the same class was just used
+  hero.classList.add(cls);
 }
 
 function hit(lane) {
@@ -378,14 +401,16 @@ function hit(lane) {
   });
   const w = battle.windows;
   let j = 'MISS';
-  if (best >= 0 && delta <= w.good) {
-    battle.used.add(best);
-    const el = battle.noteEls.get(best);
-    if (el) { el.remove(); battle.noteEls.delete(best); }
-    j = delta <= w.perfect ? 'PERFECT' : 'GOOD';
+  if (best >= 0 && delta <= w.good) { battle.used.add(best); j = delta <= w.perfect ? 'PERFECT' : 'GOOD'; }
+  showFeedback(j);
+  animateHero(lane, j);
+  const zoneEl = battle.zoneEls[lane];
+  if (zoneEl) {
+    zoneEl.classList.remove('lit');
+    const hitCls = 'hit-' + j.toLowerCase();
+    zoneEl.classList.add(hitCls);
+    setTimeout(() => zoneEl.classList.remove(hitCls), 220);
   }
-  const f = document.getElementById('feedback');
-  if (f) { f.textContent = j; f.className = 'feedback ' + j; setTimeout(() => { if (f) f.textContent = ''; }, 220); }
   if (j === 'MISS') { battle.combo = 0; battle.counts.MISS++; }
   else { battle.combo++; battle.maxCombo = Math.max(battle.maxCombo, battle.combo); battle.counts[j]++; battle.score += (j === 'PERFECT' ? 1000 : 500) * Math.max(1, battle.combo); }
 }
@@ -432,7 +457,22 @@ function settings() {
 }
 
 /* ---------- audio ---------- */
-function startMusic() {
+// Per-location custom tracks live at src/assets/audio/<location-id>.mp3.
+// If a track is missing (any location without a song yet), this falls back
+// to the original click-track so the game still plays fine either way.
+let audioEl = null;
+function startMusic(loc) {
+  stopMusic();
+  const src = `${A}audio/${loc.id}.mp3`;
+  const el = new Audio(src);
+  el.volume = 0.55;
+  el.loop = true;
+  let fellBack = false;
+  const fallback = () => { if (fellBack) return; fellBack = true; audioEl = null; startClickTrack(); };
+  el.addEventListener('error', fallback);
+  el.play().then(() => { audioEl = el; }).catch(fallback);
+}
+function startClickTrack() {
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const tick = () => {
@@ -445,7 +485,12 @@ function startMusic() {
     audioTimer = setInterval(tick, Math.round(500 * SLOW_FACTOR));
   } catch {}
 }
-function stopMusic() { if (audioTimer) clearInterval(audioTimer); audioTimer = null; if (audioCtx) { audioCtx.close(); audioCtx = null; } }
+function stopMusic() {
+  if (audioTimer) clearInterval(audioTimer); audioTimer = null;
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (audioEl) { audioEl.pause(); audioEl = null; }
+}
+
 
 /* ---------- events ---------- */
 app.addEventListener('click', e => {
@@ -507,7 +552,7 @@ app.addEventListener('pointerleave', e => {
   if (b) b.classList.remove('pressed');
 }, true);
 app.addEventListener('pointercancel', e => {
-  document.querySelectorAll('.lane-btn.pressed').forEach(b => b.classList.remove('pressed'));
+  document.querySelectorAll('.zone.pressed').forEach(b => b.classList.remove('pressed'));
 });
 
 render();
