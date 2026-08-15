@@ -106,9 +106,13 @@ function save() { try { localStorage.setItem('h234_state', JSON.stringify({ loca
 function currentHero() { return state.hero.src === 'custom' && state.custom ? { ...state.hero, image: state.custom } : state.hero; }
 function frame(eyebrow, body, bare) { return `<main class="frame${bare ? ' bare' : ''}"><div class="topbar"><span>${eyebrow}</span><span>V.0.2 // MVP</span></div>${body}</main>`; }
 
+let lastScreen = null;
 function render() {
   save();
   const s = state.screen;
+  // Skip the generic page chime on the very first screen (boot) — that one
+  // gets its own bigger startup chime instead, so they don't overlap.
+  if (s !== lastScreen) { if (lastScreen !== null) sfxPageLoad(); lastScreen = s; }
   if (s === 'boot') return boot();
   if (s === 'map') return map();
   if (s === 'heroes') return heroSelect();
@@ -120,6 +124,7 @@ function render() {
 
 /* ---------- boot ---------- */
 function boot() {
+  sfxStartup();
   app.innerHTML = frame('H234 // ARCADE NETWORK', `<section class="boot"><div class="boot-card">
     <img class="level-one" src="${A}h234-logo-blue.png">
     <p class="enter-house-text">ARE YOU READY TO PLAY</p>
@@ -132,6 +137,7 @@ function boot() {
 /* ---------- map (full-page, draggable, zoomable, accurate hotspots) ---------- */
 function map() {
   const selected = locations.find(x => x.id === state.location);
+  const tiers = ['EASY', 'MEDIUM', 'HARD'];
   app.innerHTML = frame('H234 // WORLD MAP', `
     <section class="mapwrap" id="mapwrap">
       <div class="mapstage" id="mapstage">
@@ -145,11 +151,22 @@ function map() {
       </div>
       <div class="map-title"><img src="${A}h234-logo-gold.jpeg"><div>SELECT DESTINATION</div></div>
       <div class="hud-buttons">
+        <button data-action="toggle-list" title="Locations">☰</button>
         <button data-action="recenter" title="Recenter">⌖</button>
         <button data-action="sound">${state.sound ? '◉' : '○'}</button>
         <button data-action="settings">⚙</button>
       </div>
-      <div class="map-hint">DRAG TO EXPLORE • SCROLL / PINCH TO ZOOM • TAP A SITE</div>
+      <div class="map-hint"><span class="pulse-dot"></span>DRAG TO EXPLORE • SCROLL / PINCH TO ZOOM • TAP A SITE TO SELECT IT</div>
+      <aside class="location-list" id="locationList">
+        <div class="location-list-head">ALL LOCATIONS</div>
+        ${tiers.map(tier => `
+          <div class="location-tier">${tier}</div>
+          ${locations.filter(l => l.difficulty === tier).map(l => `
+            <button class="location-row diff-${l.difficulty.toLowerCase()} ${l.id === state.location ? 'selected' : ''}" data-location="${l.id}">
+              <span class="dot"></span><span class="location-row-name">${l.name}</span>
+            </button>`).join('')}
+        `).join('')}
+      </aside>
       <div class="map-info" id="mapInfo">
         <span>DESTINATION</span>
         <strong id="mapInfoName">${selected.name}</strong>
@@ -281,7 +298,7 @@ function heroSelect() {
   const hero = currentHero();
   app.innerHTML = frame('H234 // HERO SELECT', `<section class="hero-select">
     <div class="screen-heading compact"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR HERO</span><h1>HERO SELECT</h1></div></div>
-    <div class="howto"><strong>HOW TO PLAY</strong><p>Jump ← LEFT, ↑ FORWARD, or → RIGHT to match the lit side. Time it to the beat — chain hits for a bigger combo. Double-tap a hero to select and jump straight in.</p></div>
+    <div class="howto"><strong>HOW TO PLAY</strong><p>Jump ← LEFT, ↑ FORWARD, or → RIGHT to match the lit side. Time it to the beat — chain hits for a bigger combo. Land PERFECTs for the top S rank. Double-tap a hero to select and jump straight in.</p></div>
     <div class="hero-carousel" id="heroCarousel">
       ${heroes.map(h => `<button class="hero-card ${hero.id === h.id ? 'chosen' : ''}" data-hero="${h.id}"><img src="${h.image}"><strong>${h.name}</strong><small>PRESET HERO</small></button>`).join('')}
       <button class="hero-card create-card ${hero.src === 'custom' ? 'chosen' : ''}" data-action="create"><div class="upload-orb">↑</div><strong>CREATE YOUR HERO</strong><small>UPLOAD YOUR EMAILED CHARACTER</small></button>
@@ -441,10 +458,15 @@ function finishBattle() {
 /* ---------- results ---------- */
 function results() {
   const r = state.result;
-  const rank = r.accuracy >= 90 ? 'S' : r.accuracy >= 75 ? 'A' : r.accuracy >= 60 ? 'B' : 'C';
+  const tiers = [{ r: 'S', min: 90 }, { r: 'A', min: 75 }, { r: 'B', min: 60 }, { r: 'C', min: 0 }];
+  const rank = tiers.find(t => r.accuracy >= t.min).r;
   app.innerHTML = frame('H234 // RESULTS', `<section class="results">
     <div class="result-head"><img src="${A}h234-logo-gold.jpeg"><span>RUN COMPLETE</span><h1>ZONE CLEARED</h1></div>
     <div class="rank">${rank}<small>RANK</small></div>
+    <div class="rank-legend">
+      ${tiers.map(t => `<span class="${t.r === rank ? 'current' : ''}">${t.r} <em>${t.min}%+</em></span>`).join('')}
+    </div>
+    <p class="rank-note">Rank is based on accuracy — PERFECT hits count full, GOOD hits count half, MISS counts zero.</p>
     <div class="stats">
       <div><span>SCORE</span><strong>${r.score.toLocaleString()}</strong></div>
       <div><span>ACCURACY</span><strong>${r.accuracy}%</strong></div>
@@ -466,6 +488,44 @@ function settings() {
     <div class="setting-row"><div><strong>RESET HERO</strong><small>Clear locally stored custom hero</small></div><button data-action="reset">RESET</button></div>
   </section>`);
 }
+
+/* ---------- sound effects (synthesized — no audio files needed) ---------- */
+let sfxCtx = null;
+function getSfxCtx() {
+  try {
+    if (!sfxCtx) sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (sfxCtx.state === 'suspended') sfxCtx.resume();
+    return sfxCtx;
+  } catch { return null; }
+}
+function playTone(freq, duration, type, gain, delay) {
+  if (!state.sound) return;
+  const ctx = getSfxCtx();
+  if (!ctx) return;
+  try {
+    const t0 = ctx.currentTime + (delay || 0);
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t0); o.stop(t0 + duration + 0.02);
+  } catch {}
+}
+// Rising three-note arcade chime — plays once when the game first opens.
+function sfxStartup() { playTone(392, .12, 'square', .07, 0); playTone(523.25, .12, 'square', .07, .09); playTone(659.25, .2, 'square', .08, .18); }
+// Short blip whenever a new screen opens (map, hero select, battle, results...).
+function sfxPageLoad() { playTone(660, .07, 'square', .045); }
+// Generic UI button tap.
+function sfxClick() { playTone(880, .045, 'square', .045); }
+// Slightly different tone for selecting a map location, so it reads as
+// "destination chosen" rather than a plain button press.
+function sfxLocation() { playTone(740, .07, 'triangle', .06); }
+// Very quiet tick under every battle control tap — a soft underlay, separate
+// from (and quieter than) the PERFECT/GOOD/MISS judgment feedback.
+function sfxTapUnderlay() { playTone(500, .035, 'sine', .022); }
 
 /* ---------- audio ---------- */
 // Per-location custom tracks live at src/assets/audio/<location-id>.mp3.
@@ -506,7 +566,12 @@ function stopMusic() {
 /* ---------- events ---------- */
 app.addEventListener('click', e => {
   const action = e.target.closest('[data-action]')?.dataset.action;
+  if (action === 'toggle-list') {
+    document.getElementById('locationList')?.classList.toggle('open');
+    return;
+  }
   if (action) {
+    sfxClick();
     if (action === 'start') state.screen = 'map';
     if (action === 'map') state.screen = 'map';
     if (action === 'heroes') state.screen = 'heroes';
@@ -523,6 +588,7 @@ app.addEventListener('click', e => {
   }
   const hero = e.target.closest('[data-hero]')?.dataset.hero;
   if (hero) {
+    sfxClick();
     state.hero = heroes.find(h => h.id === hero) || heroes[0];
     // Double-tap/double-click the same card: select AND jump straight into
     // battle, instead of select-then-hunt-for-the-continue-button.
@@ -537,7 +603,7 @@ app.addEventListener('click', e => {
     return;
   }
   const loc = e.target.closest('[data-location]')?.dataset.location;
-  if (loc) { state.location = loc; render(); }
+  if (loc) { sfxLocation(); state.location = loc; render(); }
 });
 
 app.addEventListener('change', e => {
@@ -557,6 +623,7 @@ window.addEventListener('keydown', e => {
   const lane = battle.symbols && LANE_KEYS[locations.find(l => l.id === state.location)?.difficulty]?.indexOf(e.key);
   if (lane === undefined || lane < 0) return;
   e.preventDefault();
+  sfxTapUnderlay();
   hit(lane);
   // Flash the matching on-screen button so keyboard players get the same
   // "it registered" feedback as touch/mouse players.
@@ -565,7 +632,7 @@ window.addEventListener('keydown', e => {
 });
 app.addEventListener('pointerdown', e => {
   const b = e.target.closest('[data-lane-btn]');
-  if (b && state.screen === 'battle') { b.classList.add('pressed'); hit(Number(b.dataset.laneBtn)); }
+  if (b && state.screen === 'battle') { b.classList.add('pressed'); sfxTapUnderlay(); hit(Number(b.dataset.laneBtn)); }
 });
 app.addEventListener('pointerup', e => {
   const b = e.target.closest('[data-lane-btn]');

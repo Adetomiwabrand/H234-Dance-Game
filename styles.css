@@ -37,12 +37,31 @@ button{font:inherit;color:inherit;cursor:pointer}
 .map-title img{width:100px;height:42px;object-fit:contain}
 .hud-buttons{position:absolute;right:14px;top:14px;display:flex;gap:8px;z-index:5}
 .hud-buttons button{width:44px;padding:0;background:#0a0f22ee}
-.map-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-family:var(--font-arcade);font-size:7px;letter-spacing:1px;color:#7f93d9;background:#080c1ecf;border:1px solid #1e2d63;padding:7px 12px;z-index:5;pointer-events:none}
+.map-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;font-family:var(--font-arcade);font-size:7px;letter-spacing:1px;color:#c7d0f5;background:#080c1ef2;border:1px solid #ff9b4b55;padding:8px 14px;z-index:5;pointer-events:none;max-width:calc(100% - 28px);text-align:center}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:#ff9b4b;flex:none;animation:pulseDot 1.4s ease-in-out infinite}
+@keyframes pulseDot{0%,100%{opacity:1;box-shadow:0 0 0 0 #ff9b4b88}50%{opacity:.5;box-shadow:0 0 0 5px #ff9b4b00}}
+
+/* Right-side location list — grouped by difficulty, always reachable via
+   the toggle button, docked open by default on wide screens. */
+.location-list{position:absolute;top:66px;right:14px;bottom:14px;width:220px;background:#080c1ef5;border:1px solid #1e2d63;z-index:6;overflow-y:auto;padding:12px;transform:translateX(0);transition:transform .25s ease}
+.location-list-head{font-family:var(--font-arcade);font-size:8px;color:#7f93d9;letter-spacing:1px;padding-bottom:10px;border-bottom:1px solid #16224f;margin-bottom:8px}
+.location-tier{font-family:var(--font-arcade);font-size:7px;letter-spacing:2px;color:#ff9b4b;margin:12px 0 6px}
+.location-row{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid transparent;background:none;padding:8px 6px;font-family:var(--font-block);font-size:10px;color:#c7d0f5}
+.location-row .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.location-row.diff-easy .dot{background:#5fae52;box-shadow:0 0 8px #5fae52aa}
+.location-row.diff-medium .dot{background:#d4a01e;box-shadow:0 0 8px #d4a01eaa}
+.location-row.diff-hard .dot{background:#c73a3a;box-shadow:0 0 8px #c73a3aaa}
+.location-row:hover{background:#0d1330}
+.location-row.selected{border-color:#ff9b4b;background:#1a1330;color:#fff}
+@media(max-width:900px){
+.location-list{transform:translateX(calc(100% + 14px))}
+.location-list.open{transform:translateX(0)}
+}
 .map-info{position:absolute;left:14px;bottom:14px;width:min(320px,calc(100% - 28px));padding:16px;background:#080c1eef;border:1px solid #1e2d63;z-index:5}
 .map-info span,.map-info em{display:block;color:#7f93d9;font-family:var(--font-arcade);font-size:8px}
 .map-info strong{display:block;font-family:var(--font-block);font-size:16px;margin:9px 0;color:#fff}
 .map-info em{margin-bottom:14px;font-style:normal;color:#ff9b4b}
-@media(max-width:640px){.map-title{font-size:7px;padding:6px 8px;gap:8px}.map-title img{width:70px;height:30px}.map-info{bottom:10px;left:10px}.map-hint{display:none}}
+@media(max-width:640px){.map-title{font-size:7px;padding:6px 8px;gap:8px}.map-title img{width:54px;height:24px}.map-title div{display:none}.hud-buttons{gap:6px}.hud-buttons button{width:36px;min-height:36px}.map-info{bottom:10px;left:10px}.map-hint{font-size:6px;padding:6px 10px;bottom:10px}.location-list{top:56px;right:10px;bottom:10px;width:calc(100% - 20px)}}
 
 .panel-screen{max-width:1100px;margin:40px auto 0;padding:30px;border:1px solid #1e2d63;background:linear-gradient(135deg,#0c1230,#080c1e);min-height:calc(100vh - 150px);box-shadow:inset 0 0 60px #000}
 .screen-heading{display:flex;gap:18px;align-items:center;border-bottom:1px solid #16224f;padding-bottom:20px}
@@ -131,6 +150,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 .result-head h1{font-family:var(--font-block);font-size:23px;letter-spacing:1px;color:#fff}
 .rank{font-family:var(--font-block);font-size:100px;color:#ff9b4b;text-shadow:0 0 40px #ff8a2766}
 .rank small{display:block;font-family:var(--font-arcade);font-size:7px;color:#5670c2}
+.rank-legend{display:flex;justify-content:center;gap:14px;margin-top:12px;flex-wrap:wrap}
+.rank-legend span{font-family:var(--font-block);font-size:13px;color:#3d4d99;display:flex;align-items:center;gap:5px}
+.rank-legend span em{font-family:var(--font-arcade);font-style:normal;font-size:7px;color:#3d4d99}
+.rank-legend span.current{color:#ff9b4b}
+.rank-legend span.current em{color:#ff9b4b}
+.rank-note{font-family:var(--font-arcade);font-size:7px;color:#7f93d9;letter-spacing:.5px;line-height:1.9;max-width:480px;margin:16px auto 0}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:20px 0}
 .stats div{border:1px solid #16224f;padding:15px 5px;background:#0a0f22}
 .stats span{display:block;font-family:var(--font-arcade);font-size:6px;color:#5670c2}
