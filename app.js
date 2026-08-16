@@ -134,47 +134,77 @@ function boot() {
   </div></section>`);
 }
 
-/* ---------- map (full-page, draggable, zoomable, accurate hotspots) ---------- */
+/* ---------- map (bordered, contained viewport; header + footer outside it) ---------- */
 function map() {
   const selected = locations.find(x => x.id === state.location);
   const tiers = ['EASY', 'MEDIUM', 'HARD'];
   app.innerHTML = frame('H234 // WORLD MAP', `
-    <section class="mapwrap" id="mapwrap">
-      <div class="mapstage" id="mapstage">
-        <img class="map-img" id="mapImg" src="${A}h234-map.jpeg" alt="H234 world map" draggable="false">
-        ${locations.map(l => `
-          <button class="hotspot diff-${l.difficulty.toLowerCase()} ${l.id === state.location ? 'selected' : ''}"
-            style="top:${l.top}%;left:${l.left}%" data-location="${l.id}">
-            <span class="pin"></span>
-            <span class="tag">${l.name}<b>${l.difficulty}</b></span>
-          </button>`).join('')}
+    <section class="mapscreen">
+      <div class="map-header">
+        <div class="map-title-row">
+          <div class="map-title"><img src="${A}h234-logo-gold.jpeg"><div>SELECT DESTINATION</div></div>
+          <div class="hud-buttons">
+            <button data-action="toggle-list" title="Locations">☰</button>
+            <button data-action="recenter" title="Recenter view">⌖</button>
+            <button data-action="sound" title="${state.sound ? 'Mute' : 'Unmute'} sound">${state.sound ? '◉' : '○'}</button>
+            <button data-action="settings" title="Settings">⚙</button>
+          </div>
+        </div>
+        <div class="map-hint"><span class="pulse-dot"></span>DRAG TO EXPLORE • SCROLL / PINCH TO ZOOM • TAP A SITE TO SELECT IT</div>
       </div>
-      <div class="map-title"><img src="${A}h234-logo-gold.jpeg"><div>SELECT DESTINATION</div></div>
-      <div class="hud-buttons">
-        <button data-action="toggle-list" title="Locations">☰</button>
-        <button data-action="recenter" title="Recenter">⌖</button>
-        <button data-action="sound">${state.sound ? '◉' : '○'}</button>
-        <button data-action="settings">⚙</button>
-      </div>
-      <div class="map-hint"><span class="pulse-dot"></span>DRAG TO EXPLORE • SCROLL / PINCH TO ZOOM • TAP A SITE TO SELECT IT</div>
-      <aside class="location-list" id="locationList">
-        <div class="location-list-head">ALL LOCATIONS</div>
-        ${tiers.map(tier => `
-          <div class="location-tier">${tier}</div>
-          ${locations.filter(l => l.difficulty === tier).map(l => `
-            <button class="location-row diff-${l.difficulty.toLowerCase()} ${l.id === state.location ? 'selected' : ''}" data-location="${l.id}">
-              <span class="dot"></span><span class="location-row-name">${l.name}</span>
+      <div class="mapwrap" id="mapwrap">
+        <div class="mapstage" id="mapstage">
+          <img class="map-img" id="mapImg" src="${A}h234-map.jpeg" alt="H234 world map" draggable="false">
+          ${locations.map(l => `
+            <button class="hotspot diff-${l.difficulty.toLowerCase()} ${l.id === state.location ? 'selected' : ''}"
+              style="top:${l.top}%;left:${l.left}%" data-location="${l.id}">
+              <span class="pin"></span>
+              <span class="tag">${l.name}<b>${l.difficulty}</b></span>
             </button>`).join('')}
-        `).join('')}
-      </aside>
+        </div>
+        <aside class="location-list" id="locationList">
+          <div class="location-list-head">ALL LOCATIONS</div>
+          ${tiers.map(tier => `
+            <div class="location-tier">${tier}</div>
+            ${locations.filter(l => l.difficulty === tier).map(l => `
+              <button class="location-row diff-${l.difficulty.toLowerCase()} ${l.id === state.location ? 'selected' : ''}" data-location="${l.id}">
+                <span class="dot"></span><span class="location-row-name">${l.name}</span>
+              </button>`).join('')}
+          `).join('')}
+        </aside>
+      </div>
       <div class="map-info" id="mapInfo">
-        <span>DESTINATION</span>
-        <strong id="mapInfoName">${selected.name}</strong>
-        <em id="mapInfoDesc">${selected.desc} — ${selected.difficulty}</em>
-        <button class="primary" data-action="heroes">ENTER ZONE →</button>
+        <div class="map-info-text">
+          <span>DESTINATION</span>
+          <strong id="mapInfoName">${selected.name}</strong>
+          <em id="mapInfoDesc">${selected.desc} — ${selected.difficulty}</em>
+        </div>
+        <div class="map-info-actions">
+          <button class="primary" data-action="heroes">ENTER ZONE →</button>
+          <div class="site-scroll">
+            <button data-action="prev-location" title="Previous location">‹</button>
+            <button data-action="next-location" title="Next location">›</button>
+          </div>
+        </div>
       </div>
     </section>`, true);
   initMapPanZoom();
+}
+
+// Lightweight selection update — changes the destination without a full
+// re-render, so the map's current pan/zoom position (and the hero carousel's
+// scroll position, via the equivalent hero path below) is never disturbed.
+function selectLocationLight(id) {
+  const loc = locations.find(l => l.id === id);
+  if (!loc) return;
+  state.location = id;
+  save();
+  document.querySelectorAll('.hotspot').forEach(el => el.classList.toggle('selected', el.dataset.location === id));
+  document.querySelectorAll('.location-row').forEach(el => el.classList.toggle('selected', el.dataset.location === id));
+  const nameEl = document.getElementById('mapInfoName');
+  const descEl = document.getElementById('mapInfoDesc');
+  if (nameEl) nameEl.textContent = loc.name;
+  if (descEl) descEl.textContent = `${loc.desc} — ${loc.difficulty}`;
 }
 
 let mapAbort = null;
@@ -566,10 +596,37 @@ function stopMusic() {
 /* ---------- events ---------- */
 app.addEventListener('click', e => {
   const action = e.target.closest('[data-action]')?.dataset.action;
+
+  // Map-specific actions get lightweight handling — a full render() would
+  // rebuild the map and reset the pan/zoom position, which is exactly what
+  // "stays where it is when selected" means to avoid.
   if (action === 'toggle-list') {
     document.getElementById('locationList')?.classList.toggle('open');
     return;
   }
+  if (action === 'recenter') {
+    sfxClick();
+    window.__mapRecenter && window.__mapRecenter();
+    return;
+  }
+  if (action === 'prev-location' || action === 'next-location') {
+    sfxLocation();
+    const idx = locations.findIndex(l => l.id === state.location);
+    const dir = action === 'next-location' ? 1 : -1;
+    const next = locations[(idx + dir + locations.length) % locations.length];
+    selectLocationLight(next.id);
+    return;
+  }
+  if (action === 'sound' && state.screen === 'map') {
+    sfxClick();
+    state.sound = !state.sound;
+    if (!state.sound) stopMusic();
+    save();
+    const btn = e.target.closest('[data-action="sound"]');
+    if (btn) { btn.textContent = state.sound ? '◉' : '○'; btn.title = (state.sound ? 'Mute' : 'Unmute') + ' sound'; }
+    return;
+  }
+
   if (action) {
     sfxClick();
     if (action === 'start') state.screen = 'map';
@@ -582,7 +639,6 @@ app.addEventListener('click', e => {
     if (action === 'sound') { state.sound = !state.sound; if (!state.sound) stopMusic(); }
     if (action === 'settings') state.screen = 'settings';
     if (action === 'reset') { state.custom = ''; state.hero = heroes[0]; }
-    if (action === 'recenter' && window.__mapRecenter) window.__mapRecenter();
     render();
     return;
   }
@@ -593,17 +649,28 @@ app.addEventListener('click', e => {
     // Double-tap/double-click the same card: select AND jump straight into
     // battle, instead of select-then-hunt-for-the-continue-button.
     const now = Date.now();
-    if (lastHeroTap.id === hero && now - lastHeroTap.time < 400) {
+    const isDoubleTap = lastHeroTap.id === hero && now - lastHeroTap.time < 400;
+    if (isDoubleTap) {
       lastHeroTap = { id: null, time: 0 };
       state.screen = 'battle';
+      render();
     } else {
       lastHeroTap = { id: hero, time: now };
+      save();
+      // Lightweight update only — a full render() would rebuild the whole
+      // carousel and reset its horizontal scroll position back to 0.
+      if (state.screen === 'heroes') {
+        document.querySelectorAll('.hero-card').forEach(c => c.classList.toggle('chosen', c.dataset.hero === hero));
+        const nameEl = document.getElementById('selectedHeroName');
+        if (nameEl) nameEl.textContent = state.hero.name;
+      } else {
+        render();
+      }
     }
-    render();
     return;
   }
   const loc = e.target.closest('[data-location]')?.dataset.location;
-  if (loc) { sfxLocation(); state.location = loc; render(); }
+  if (loc) { sfxLocation(); selectLocationLight(loc); }
 });
 
 app.addEventListener('change', e => {

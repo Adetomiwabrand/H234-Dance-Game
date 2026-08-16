@@ -10,7 +10,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .frame:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;background:repeating-linear-gradient(0deg,transparent 0 3px,#fff 4px);z-index:20}
 .topbar{height:34px;display:flex;justify-content:space-between;align-items:center;color:#7f93d9;font-family:var(--font-arcade);font-size:8px;letter-spacing:1px;border-bottom:1px solid #16224f}
 .boot{min-height:calc(100dvh - 70px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom))}
-.boot-card{width:min(680px,90vw);text-align:center;border:1px solid #1e2d63;background:linear-gradient(#0c1230,#080c1e);padding:38px;box-shadow:0 0 90px #1338b855,inset 0 0 40px #000}
+.boot-card{width:min(680px,90vw);text-align:center;border:2px solid #1e2d63;background:linear-gradient(#0c1230,#080c1e);padding:38px;box-shadow:0 0 90px #1338b855,inset 0 0 40px #000}
 .boot-card img{width:100%;object-fit:contain}
 .boot-card .level-one{max-height:230px}
 .boot-card .enter-house-text{font-family:var(--font-arcade);font-size:15px;letter-spacing:2px;color:#fff;margin:20px 0 0;line-height:1.7;text-shadow:0 0 18px #4570ff99}
@@ -20,7 +20,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 .primary{background:#d46d1e;color:#0b0705;border-color:#ff9b4b;box-shadow:0 0 25px #a7461466}
 .primary:disabled{opacity:.35;cursor:not-allowed}
 .huge{margin-top:16px;min-width:220px}
-.mapwrap{position:relative;flex:1;overflow:hidden;background:#061d3b;cursor:grab;touch-action:none}
+.mapscreen{flex:1;min-height:0;display:flex;flex-direction:column}
+.map-header{flex:none;padding:14px 14px 0}
+.map-title-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.map-title{display:flex;align-items:center;gap:14px;padding:8px 12px;background:#080c1ecf;border:2px solid #1e2d63;font-family:var(--font-arcade);font-size:9px;letter-spacing:1px}
+.map-title img{width:100px;height:42px;object-fit:contain}
+.hud-buttons{display:flex;gap:8px}
+.hud-buttons button{width:44px;padding:0;background:#0a0f22ee}
+.map-hint{margin-top:10px;display:flex;align-items:center;gap:8px;font-family:var(--font-arcade);font-size:7px;letter-spacing:1px;color:#c7d0f5;background:#080c1ef2;border:2px solid #ff9b4b55;padding:9px 14px}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:#ff9b4b;flex:none;animation:pulseDot 1.4s ease-in-out infinite}
+@keyframes pulseDot{0%,100%{opacity:1;box-shadow:0 0 0 0 #ff9b4b88}50%{opacity:.5;box-shadow:0 0 0 5px #ff9b4b00}}
+
+/* The map viewport itself — a contained box between two solid borders.
+   Panning/zooming is clipped to exactly this box (overflow:hidden) and can
+   never spill up into the header or down into the destination card. */
+.mapwrap{position:relative;flex:1;min-height:0;margin:10px 14px;overflow:hidden;background:#061d3b;cursor:grab;touch-action:none;border-top:3px solid #ff9b4b;border-bottom:3px solid #ff9b4b;box-shadow:0 0 30px #00000066}
 .mapwrap.grabbing{cursor:grabbing}
 .mapstage{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
 .map-img{display:block;width:850px;height:680px;user-select:none;pointer-events:none}
@@ -33,17 +47,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hotspot.diff-easy .pin{background:#5fae52;box-shadow:0 0 12px #5fae52aa}
 .hotspot.diff-medium .pin{background:#d4a01e;box-shadow:0 0 12px #d4a01eaa}
 .hotspot.diff-hard .pin{background:#c73a3a;box-shadow:0 0 12px #c73a3aaa}
-.map-title{position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:14px;padding:8px 12px;background:#080c1ecf;border:1px solid #1e2d63;font-family:var(--font-arcade);font-size:9px;letter-spacing:1px;z-index:5}
-.map-title img{width:100px;height:42px;object-fit:contain}
-.hud-buttons{position:absolute;right:14px;top:14px;display:flex;gap:8px;z-index:5}
-.hud-buttons button{width:44px;padding:0;background:#0a0f22ee}
-.map-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;font-family:var(--font-arcade);font-size:7px;letter-spacing:1px;color:#c7d0f5;background:#080c1ef2;border:1px solid #ff9b4b55;padding:8px 14px;z-index:5;pointer-events:none;max-width:calc(100% - 28px);text-align:center}
-.pulse-dot{width:7px;height:7px;border-radius:50%;background:#ff9b4b;flex:none;animation:pulseDot 1.4s ease-in-out infinite}
-@keyframes pulseDot{0%,100%{opacity:1;box-shadow:0 0 0 0 #ff9b4b88}50%{opacity:.5;box-shadow:0 0 0 5px #ff9b4b00}}
 
-/* Right-side location list — grouped by difficulty, always reachable via
-   the toggle button, docked open by default on wide screens. */
-.location-list{position:absolute;top:66px;right:14px;bottom:14px;width:220px;background:#080c1ef5;border:1px solid #1e2d63;z-index:6;overflow-y:auto;padding:12px;transform:translateX(0);transition:transform .25s ease}
+/* Right-side location list — lives inside the bordered map box, grouped by
+   difficulty, always reachable via the toggle button. */
+.location-list{position:absolute;top:10px;right:10px;bottom:10px;width:220px;background:#080c1ef5;border:2px solid #1e2d63;z-index:6;overflow-y:auto;padding:12px;transform:translateX(0);transition:transform .25s ease}
 .location-list-head{font-family:var(--font-arcade);font-size:8px;color:#7f93d9;letter-spacing:1px;padding-bottom:10px;border-bottom:1px solid #16224f;margin-bottom:8px}
 .location-tier{font-family:var(--font-arcade);font-size:7px;letter-spacing:2px;color:#ff9b4b;margin:12px 0 6px}
 .location-row{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid transparent;background:none;padding:8px 6px;font-family:var(--font-block);font-size:10px;color:#c7d0f5}
@@ -54,16 +61,32 @@ button{font:inherit;color:inherit;cursor:pointer}
 .location-row:hover{background:#0d1330}
 .location-row.selected{border-color:#ff9b4b;background:#1a1330;color:#fff}
 @media(max-width:900px){
-.location-list{transform:translateX(calc(100% + 14px))}
+.location-list{transform:translateX(calc(100% + 10px))}
 .location-list.open{transform:translateX(0)}
 }
-.map-info{position:absolute;left:14px;bottom:14px;width:min(320px,calc(100% - 28px));padding:16px;background:#080c1eef;border:1px solid #1e2d63;z-index:5}
+
+.map-info{flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:0 14px 14px;padding:16px;background:#080c1eef;border:2px solid #1e2d63}
 .map-info span,.map-info em{display:block;color:#7f93d9;font-family:var(--font-arcade);font-size:8px}
 .map-info strong{display:block;font-family:var(--font-block);font-size:16px;margin:9px 0;color:#fff}
 .map-info em{margin-bottom:14px;font-style:normal;color:#ff9b4b}
-@media(max-width:640px){.map-title{font-size:7px;padding:6px 8px;gap:8px}.map-title img{width:54px;height:24px}.map-title div{display:none}.hud-buttons{gap:6px}.hud-buttons button{width:36px;min-height:36px}.map-info{bottom:10px;left:10px}.map-hint{font-size:6px;padding:6px 10px;bottom:10px}.location-list{top:56px;right:10px;bottom:10px;width:calc(100% - 20px)}}
+.map-info-actions{display:flex;align-items:center;gap:12px;flex:none}
+.site-scroll{display:flex;gap:8px}
+.site-scroll button{width:38px;min-height:38px;padding:0;font-size:18px;border:2px solid #16224f;background:#0d1226;color:#c7d0f5;display:inline-flex;align-items:center;justify-content:center}
+.site-scroll button:hover{border-color:#ff9b4b;color:#ff9b4b}
+@media(max-width:640px){
+.map-header{padding:10px 10px 0}
+.map-title{font-size:7px;padding:6px 8px;gap:8px}
+.map-title img{width:54px;height:24px}
+.map-title div{display:none}
+.hud-buttons{gap:6px}
+.hud-buttons button{width:36px;min-height:36px}
+.map-hint{font-size:6px;padding:7px 10px}
+.mapwrap{margin:8px 10px}
+.map-info{margin:0 10px 10px;flex-wrap:wrap}
+.location-list{width:calc(100% - 20px)}
+}
 
-.panel-screen{max-width:1100px;margin:40px auto 0;padding:30px;border:1px solid #1e2d63;background:linear-gradient(135deg,#0c1230,#080c1e);min-height:calc(100vh - 150px);box-shadow:inset 0 0 60px #000}
+.panel-screen{max-width:1100px;margin:40px auto 0;padding:30px;border:2px solid #1e2d63;background:linear-gradient(135deg,#0c1230,#080c1e);min-height:calc(100vh - 150px);box-shadow:inset 0 0 60px #000}
 .screen-heading{display:flex;gap:18px;align-items:center;border-bottom:1px solid #16224f;padding-bottom:20px}
 .screen-heading span{font-family:var(--font-arcade);font-size:8px;color:#7f93d9;letter-spacing:1px}
 .screen-heading h1{font-family:var(--font-block);font-size:22px;margin:9px 0;letter-spacing:1px;color:#fff}
@@ -73,7 +96,7 @@ button{font:inherit;color:inherit;cursor:pointer}
    never requires scrolling to find. Cards scroll horizontally instead. */
 .hero-select{flex:1;min-height:0;display:flex;flex-direction:column}
 .hero-select .screen-heading.compact{flex:none;padding:16px 20px;margin:0}
-.howto{flex:none;margin:14px 20px 0;padding:12px 16px;border:1px solid #16224f;background:#0a0f22;border-left:3px solid #ff9b4b}
+.howto{flex:none;margin:14px 20px 0;padding:12px 16px;border:2px solid #16224f;background:#0a0f22;border-left:4px solid #ff9b4b}
 .howto strong{display:block;font-family:var(--font-arcade);font-size:9px;color:#ff9b4b;letter-spacing:1px}
 .howto p{margin:8px 0 0;font-size:11px;color:#c7d0f5;line-height:1.7}
 .hero-carousel{flex:1;min-height:0;display:flex;align-items:stretch;gap:14px;overflow-x:auto;overflow-y:hidden;padding:16px 20px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
@@ -82,11 +105,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .selection span{display:block;font-family:var(--font-arcade);font-size:7px;color:#5670c2}
 .selection strong{font-family:var(--font-block);font-size:14px;color:#fff}
 
-.panel-screen{max-width:1100px;margin:40px auto 0;padding:30px;border:1px solid #1e2d63;background:linear-gradient(135deg,#0c1230,#080c1e);min-height:calc(100vh - 150px);box-shadow:inset 0 0 60px #000}
-.screen-heading{display:flex;gap:18px;align-items:center;border-bottom:1px solid #16224f;padding-bottom:20px}
-.screen-heading span{font-family:var(--font-arcade);font-size:8px;color:#7f93d9;letter-spacing:1px}
-.screen-heading h1{font-family:var(--font-block);font-size:22px;margin:9px 0;letter-spacing:1px;color:#fff}
-.hero-card{min-height:280px;border:1px solid #16224f;background:#0a0f22;padding:10px;text-align:left;position:relative}
+.hero-card{min-height:280px;border:2px solid #16224f;background:#0a0f22;padding:10px;text-align:left;position:relative}
 .hero-card img{width:100%;height:190px;object-fit:contain;background:#0d1330}
 .hero-card strong{display:block;margin:10px 8px 0;font-family:var(--font-block);font-size:12px;color:#fff}
 .hero-card small{display:block;margin:6px 8px 0;font-family:var(--font-arcade);font-size:7px;color:#5670c2}
@@ -94,7 +113,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .create-card{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 .upload-orb{width:84px;height:84px;border-radius:50%;border:1px dashed #d46d1e;display:grid;place-items:center;color:#d46d1e;font-size:30px}
 .create-layout{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;margin-top:28px}
-.dropzone{min-height:470px;border:1px dashed #2c3d7c;background:#080c1e;display:grid;place-items:center;text-align:center;overflow:hidden}
+.dropzone{min-height:470px;border:2px dashed #2c3d7c;background:#080c1e;display:grid;place-items:center;text-align:center;overflow:hidden}
 .dropzone img{width:100%;height:100%;object-fit:contain;max-height:470px}
 .dropzone strong,.dropzone small{display:block;margin-top:10px}
 .dropzone small{font-family:var(--font-arcade);font-size:8px;color:#5670c2}
@@ -157,11 +176,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .rank-legend span.current em{color:#ff9b4b}
 .rank-note{font-family:var(--font-arcade);font-size:7px;color:#7f93d9;letter-spacing:.5px;line-height:1.9;max-width:480px;margin:16px auto 0}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:20px 0}
-.stats div{border:1px solid #16224f;padding:15px 5px;background:#0a0f22}
+.stats div{border:2px solid #16224f;padding:15px 5px;background:#0a0f22}
 .stats span{display:block;font-family:var(--font-arcade);font-size:6px;color:#5670c2}
 .stats strong{display:block;font-family:var(--font-block);font-size:13px;margin-top:9px;color:#fff}
 .result-actions{display:flex;justify-content:center;gap:10px}
-.setting-row{display:flex;justify-content:space-between;align-items:center;padding:24px 0;border-bottom:1px solid #16224f}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:24px 0;border-bottom:2px solid #16224f}
 .setting-row strong{display:block;font-family:var(--font-block);font-size:12px;color:#fff}
 .setting-row small{display:block;font-family:var(--font-arcade);font-size:7px;color:#5670c2;margin-top:8px}
 .setting-row button{min-width:90px}
@@ -173,9 +192,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 .create-layout{grid-template-columns:1fr}
 .dropzone{min-height:320px}
 .stats{grid-template-columns:repeat(3,1fr)}
-.map-title{top:12px;left:12px}
-.map-info{left:12px;bottom:12px}
-.hud-buttons{right:12px;top:12px}
 .frame{padding:10px}
 }
 @media(max-width:520px){
@@ -190,7 +206,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 .selection{gap:10px;padding:12px 14px calc(12px + env(safe-area-inset-bottom))}
 .selection strong{font-size:10px}
 .stats{grid-template-columns:repeat(2,1fr)}
-.map-info{width:calc(100% - 24px)}
 .hotspot{min-width:120px;padding:7px}
 .hotspot span{font-size:8px}
 /* Battle screen tuned to fit one stable mobile viewport, no scroll */
@@ -214,3 +229,20 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hero-carousel .hero-card{width:120px}
 .hero-card img{height:110px}
 }
+
+/* ---------- retro panel treatment: thicker border + corner brackets,
+   applied to every card/panel across the UI ---------- */
+.panel-screen,.hero-card,.stats>div,.map-info,.howto,.location-list,.boot-card,
+.setting-row,.dropzone{position:relative}
+.panel-screen:before,.panel-screen:after,.hero-card:before,.hero-card:after,
+.stats>div:before,.stats>div:after,.map-info:before,.map-info:after,
+.howto:before,.howto:after,.location-list:before,.location-list:after,
+.boot-card:before,.boot-card:after,.dropzone:before,.dropzone:after{
+  content:"";position:absolute;width:14px;height:14px;pointer-events:none;z-index:2}
+.panel-screen:before,.hero-card:before,.stats>div:before,.map-info:before,
+.howto:before,.location-list:before,.boot-card:before,.dropzone:before{
+  top:-2px;left:-2px;border-top:2px solid #ff9b4b;border-left:2px solid #ff9b4b}
+.panel-screen:after,.hero-card:after,.stats>div:after,.map-info:after,
+.howto:after,.location-list:after,.boot-card:after,.dropzone:after{
+  bottom:-2px;right:-2px;border-bottom:2px solid #ff9b4b;border-right:2px solid #ff9b4b}
+.hero-card:before,.hero-card:after,.stats>div:before,.stats>div:after{width:10px;height:10px}
