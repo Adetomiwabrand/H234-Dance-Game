@@ -142,7 +142,7 @@ function map() {
     <section class="mapscreen">
       <div class="map-header">
         <div class="map-title-row">
-          <div class="map-title"><img src="${A}h234-logo-gold.jpeg"><div>SELECT DESTINATION</div></div>
+          <div class="map-title"><img src="${A}h234-logo-gold.png"><div>SELECT DESTINATION</div></div>
           <div class="hud-buttons">
             <button data-action="toggle-list" title="Locations">☰</button>
             <button data-action="recenter" title="Recenter view">⌖</button>
@@ -491,7 +491,7 @@ function results() {
   const tiers = [{ r: 'S', min: 90 }, { r: 'A', min: 75 }, { r: 'B', min: 60 }, { r: 'C', min: 0 }];
   const rank = tiers.find(t => r.accuracy >= t.min).r;
   app.innerHTML = frame('H234 // RESULTS', `<section class="results">
-    <div class="result-head"><img src="${A}h234-logo-gold.jpeg"><span>RUN COMPLETE</span><h1>ZONE CLEARED</h1></div>
+    <div class="result-head"><img src="${A}h234-logo-gold.png"><span>RUN COMPLETE</span><h1>ZONE CLEARED</h1></div>
     <div class="rank">${rank}<small>RANK</small></div>
     <div class="rank-legend">
       ${tiers.map(t => `<span class="${t.r === rank ? 'current' : ''}">${t.r} <em>${t.min}%+</em></span>`).join('')}

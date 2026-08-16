@@ -19,7 +19,7 @@ Open `http://localhost:4173`.
 - `src/assets/h234-map.jpeg` — real H234 world map
 - `src/assets/h234-menu-reference.png` — H234 menu reference
 - `src/assets/h234-logo-blue.png` — blue H234 logo
-- `src/assets/h234-logo-gold.jpeg` — gold H234 logo
+- `src/assets/h234-logo-gold.png` — gold H234 logo
 - `src/assets/hero-juju.png`
 - `src/assets/hero-bad.png`
 - `src/assets/hero-3.png`

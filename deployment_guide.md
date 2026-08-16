@@ -13,7 +13,7 @@ The MVP now uses the supplied H234 artwork instead of the previous placeholders.
 | `src/assets/h234-map.jpeg` | Main world/map screen |
 | `src/assets/h234-menu-reference.png` | H234 menu visual reference retained in assets |
 | `src/assets/h234-logo-blue.png` | Blue H234 logo asset |
-| `src/assets/h234-logo-gold.jpeg` | Gold H234 logo used in the map/results UI |
+| `src/assets/h234-logo-gold.png` | Gold H234 logo used in the map/results UI |
 | `src/assets/hero-juju.png` | Preset hero 1 |
 | `src/assets/hero-bad.png` | Preset hero 2 |
 | `src/assets/hero-3.png` | Preset hero 3 |
@@ -42,7 +42,7 @@ H234_Dance_Game_MVP/
         ├── h234-map.jpeg
         ├── h234-menu-reference.png
         ├── h234-logo-blue.png
-        ├── h234-logo-gold.jpeg
+        ├── h234-logo-gold.png
         ├── hero-juju.png
         ├── hero-bad.png
         ├── hero-3.png
