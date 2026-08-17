@@ -22,12 +22,24 @@ const heroes = [
   { id: 'stylish-sinner-and-knd', name: 'STYLISH SINNER & KND', src: 'preset', image: A + 'heroes/stylish-sinner-and-knd.png' },
   { id: 'ukiyo', name: 'UKIYO', src: 'preset', image: A + 'heroes/ukiyo.png' },
   { id: 'xaddy', name: 'XADDY', src: 'preset', image: A + 'heroes/xaddy.png' },
-  { id: 'zantii', name: 'ZANTII', src: 'preset', image: A + 'heroes/zantii.png' }
+  { id: 'zantii', name: 'ZANTII', src: 'preset', image: A + 'heroes/zantii.png' },
+  { id: 'vanella', name: 'VANELLA', src: 'preset', image: A + 'heroes/vanella.png' },
+  { id: 'lmnl', name: 'LMNL', src: 'preset', image: A + 'heroes/lmnl.png' },
+  { id: 'kuti', name: 'KUTI', src: 'preset', image: A + 'heroes/kuti.png' },
+  { id: 'foriti', name: 'FORITI', src: 'preset', image: A + 'heroes/foriti.png' },
+  { id: 'tobi', name: 'TOBI', src: 'preset', image: A + 'heroes/tobi.png' },
+  { id: 'zaam', name: 'ZÀÁM', src: 'preset', image: A + 'heroes/zaam.png' },
+  { id: 'oma-bear', name: 'OMA BEAR', src: 'preset', image: A + 'heroes/oma-bear.png' },
+  { id: 'summer', name: 'SUMMER', src: 'preset', image: A + 'heroes/summer.png' },
+  { id: 'oma', name: 'OMA', src: 'preset', image: A + 'heroes/oma.png' },
+  { id: 'jujuranger', name: 'JUJURANGER', src: 'preset', image: A + 'heroes/jujuranger.png' }
 ];
+
 
 // Coordinates are % of the real map artwork (850x680), hand-mapped to the
 // actual painted location markers so hotspots sit exactly where they belong.
 const locations = [
+  { id: 'tutorial', name: 'RESPAWN POINT', difficulty: 'TUTORIAL', desc: 'Learn the ropes — no pressure', top: 28.2, left: 22.6 },
   { id: 'yabs', name: 'THE YABS', difficulty: 'EASY', desc: 'Chill starter grooves', top: 51.8, left: 23.8 },
   { id: 'badlands', name: 'THE BADLANDS', difficulty: 'EASY', desc: 'Sun-baked intro course', top: 54.0, left: 50.1 },
   { id: 'maryjane', name: 'MARYJANE FIELD', difficulty: 'EASY', desc: 'Mellow field freestyle', top: 76.2, left: 52.6 },
@@ -41,6 +53,7 @@ const locations = [
 ];
 
 const DIFFICULTY_WINDOWS = {
+  TUTORIAL: { perfect: 320, good: 560 },
   EASY: { perfect: 220, good: 380 },
   MEDIUM: { perfect: 170, good: 300 },
   HARD: { perfect: 130, good: 240 }
@@ -51,17 +64,19 @@ const DIFFICULTY_WINDOWS = {
 // Hard is capped at 3 (no natural 4th direction), so it stays harder purely
 // through tighter timing windows and a faster cadence (DIFFICULTY_SPEED below).
 const LANE_SYMBOLS = {
+  TUTORIAL: ['←', '→'],
   EASY: ['←', '→'],
   MEDIUM: ['←', '↑', '→'],
   HARD: ['←', '↑', '→']
 };
 const LANE_KEYS = {
+  TUTORIAL: ['ArrowLeft', 'ArrowRight'],
   EASY: ['ArrowLeft', 'ArrowRight'],
   MEDIUM: ['ArrowLeft', 'ArrowUp', 'ArrowRight'],
   HARD: ['ArrowLeft', 'ArrowUp', 'ArrowRight']
 };
 // <1 compresses the beat spacing (faster/harder), >1 stretches it (slower/easier).
-const DIFFICULTY_SPEED = { EASY: 1.4, MEDIUM: 1.15, HARD: 0.95 };
+const DIFFICULTY_SPEED = { TUTORIAL: 1.8, EASY: 1.4, MEDIUM: 1.15, HARD: 0.95 };
 
 // SLOW_FACTOR stretches the whole chart in time — bigger gaps between notes,
 // more warning before each one arrives. 2.1x turns the original ~250-500ms
@@ -74,17 +89,62 @@ const RAW_CHART = [[0,1100],[1,1400],[2,1700],[3,2000],[0,2300],[2,2550],[1,2800
 ].map(([lane, hitTimeMs]) => ({ lane, hitTimeMs: Math.round(hitTimeMs * SLOW_FACTOR) }));
 const BASE_BATTLE_LENGTH_MS = Math.round(14500 * SLOW_FACTOR);
 
+// A short, dedicated 8-note practice pattern — deliberately much shorter than
+// a real song (~13s at TUTORIAL speed) so first-timers get a quick, low-stakes
+// first rep rather than a full-length round.
+const TUTORIAL_CHART = [[0,1300],[1,2600],[0,3900],[1,5200],[0,6500],[1,7800],[0,9100],[1,10400]]
+  .map(([lane, hitTimeMs]) => ({ lane, hitTimeMs }));
+const TUTORIAL_LENGTH_MS = 12500;
+
 // Same authored rhythm for every difficulty, remapped onto however many
 // board sides that difficulty uses (original lane 0-3 wraps via modulo),
 // then compressed/stretched by DIFFICULTY_SPEED so Hard genuinely feels
 // faster even though it uses the same 3 sides as Medium.
 function chartFor(difficulty) {
+  if (difficulty === 'TUTORIAL') return TUTORIAL_CHART.map(n => ({ ...n }));
   const laneCount = LANE_SYMBOLS[difficulty].length;
   const speed = DIFFICULTY_SPEED[difficulty] ?? 1;
   return RAW_CHART.map(n => ({ lane: n.lane % laneCount, hitTimeMs: Math.round(n.hitTimeMs * speed) }));
 }
 function battleLengthFor(difficulty) {
+  if (difficulty === 'TUTORIAL') return TUTORIAL_LENGTH_MS;
   return Math.round(BASE_BATTLE_LENGTH_MS * (DIFFICULTY_SPEED[difficulty] ?? 1));
+}
+
+// Real BPM per track, so each location's prompt rhythm is actually locked to
+// its own song's tempo instead of a generic scaled pattern.
+const LOCATION_BPM = {
+  yabs: 124, badlands: 124, maryjane: 132, level303: 74, konji: 112,
+  mollywood: 123, juju: 121, cloudnine: 122, mermaid: 126, mainland: 126
+};
+// How many beats apart consecutive prompts land, by difficulty — smaller
+// means denser/faster. Combined with each song's own BPM this is what makes
+// Hard genuinely feel faster on a 121bpm song than a slow 74bpm one, while
+// staying locked to that song's actual beat grid either way.
+const DIFFICULTY_SUBDIVISION = { EASY: 2, MEDIUM: 1, HARD: 0.5 };
+const TARGET_ROUND_MS = 32000;
+
+function chartForLocation(loc) {
+  if (loc.difficulty === 'TUTORIAL') return TUTORIAL_CHART.map(n => ({ ...n }));
+  const bpm = LOCATION_BPM[loc.id];
+  if (!bpm) return chartFor(loc.difficulty);
+  const laneCount = LANE_SYMBOLS[loc.difficulty].length;
+  const beatMs = 60000 / bpm;
+  const noteMs = beatMs * (DIFFICULTY_SUBDIVISION[loc.difficulty] ?? 1);
+  const leadInMs = beatMs * 4, outroMs = beatMs * 4;
+  const noteCount = Math.max(16, Math.floor((TARGET_ROUND_MS - leadInMs - outroMs) / noteMs));
+  const notes = [];
+  for (let i = 0; i < noteCount; i++) {
+    notes.push({ lane: RAW_CHART[i % RAW_CHART.length].lane % laneCount, hitTimeMs: Math.round(leadInMs + i * noteMs) });
+  }
+  return notes;
+}
+function battleLengthForLocation(loc) {
+  if (loc.difficulty === 'TUTORIAL') return TUTORIAL_LENGTH_MS;
+  const bpm = LOCATION_BPM[loc.id];
+  if (!bpm) return battleLengthFor(loc.difficulty);
+  const chart = chartForLocation(loc);
+  return Math.round(chart[chart.length - 1].hitTimeMs + (60000 / bpm) * 4);
 }
 
 /* ---------- state ---------- */
@@ -92,7 +152,7 @@ const saved = (() => { try { return JSON.parse(localStorage.getItem('h234_state'
 const validLocation = locations.some(l => l.id === saved.location);
 const state = {
   screen: 'boot',
-  location: validLocation ? saved.location : locations[1].id,
+  location: validLocation ? saved.location : (locations.find(l => l.id === 'yabs') || locations[0]).id,
   hero: saved.hero || heroes[0],
   custom: saved.custom || '',
   sound: saved.sound !== false,
@@ -104,7 +164,22 @@ const app = document.getElementById('app');
 
 function save() { try { localStorage.setItem('h234_state', JSON.stringify({ location: state.location, hero: state.hero, custom: state.custom, sound: state.sound })); } catch {} }
 function currentHero() { return state.hero.src === 'custom' && state.custom ? { ...state.hero, image: state.custom } : state.hero; }
-function frame(eyebrow, body, bare) { return `<main class="frame${bare ? ' bare' : ''}"><div class="topbar"><span>${eyebrow}</span><span>V.0.2 // MVP</span></div>${body}</main>`; }
+
+// Small toast confirming a toggle happened (sound on/off, view reset, etc).
+// Lives on document.body (not #app) so it survives a full render() wiping
+// the app root mid-toast.
+let toastTimer = null;
+function notify(msg) {
+  let el = document.getElementById('toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+function frame(eyebrow, body, bare) { return `<main class="frame${bare ? ' bare' : ''}">${body}</main>`; }
 
 let lastScreen = null;
 function render() {
@@ -112,7 +187,11 @@ function render() {
   const s = state.screen;
   // Skip the generic page chime on the very first screen (boot) — that one
   // gets its own bigger startup chime instead, so they don't overlap.
-  if (s !== lastScreen) { if (lastScreen !== null) sfxPageLoad(); lastScreen = s; }
+  if (s !== lastScreen) {
+    if (lastScreen !== null) sfxPageLoad();
+    if (lastScreen === 'map' && s !== 'map') stopMapMusic();
+    lastScreen = s;
+  }
   if (s === 'boot') return boot();
   if (s === 'map') return map();
   if (s === 'heroes') return heroSelect();
@@ -127,17 +206,20 @@ function boot() {
   sfxStartup();
   app.innerHTML = frame('H234 // ARCADE NETWORK', `<section class="boot"><div class="boot-card">
     <img class="level-one" src="${A}h234-logo-blue.png">
-    <p class="enter-house-text">ARE YOU READY TO PLAY</p>
+    <p class="enter-house-text">ARE YOU READY TO PLAY?</p>
     <p>FREEWORLD RHYTHM PLAYGROUND</p>
     <button class="primary huge" data-action="start">▶ ENTER THE HOUSE</button>
-    <small>JUMP LEFT, FORWARD, OR RIGHT ON THE BEAT // ${state.sound ? 'SOUND ON' : 'SOUND OFF'}</small>
-  </div></section>`);
+    <small>Play our dance game. Keep your sound on. Try to match the direction prompts to dance on beat.</small>
+  </div></section>
+  <a class="side-room-banner" href="https://paystack.shop/pay/house234" target="_blank" rel="noopener">
+    <span>GET A LATE PASS to JUJUOFTHE234 EXTENDED — unlock your own character</span>
+  </a>`);
 }
 
 /* ---------- map (bordered, contained viewport; header + footer outside it) ---------- */
 function map() {
   const selected = locations.find(x => x.id === state.location);
-  const tiers = ['EASY', 'MEDIUM', 'HARD'];
+  const tiers = ['TUTORIAL', 'EASY', 'MEDIUM', 'HARD'];
   app.innerHTML = frame('H234 // WORLD MAP', `
     <section class="mapscreen">
       <div class="map-header">
@@ -189,6 +271,7 @@ function map() {
       </div>
     </section>`, true);
   initMapPanZoom();
+  startMapMusic();
 }
 
 // Lightweight selection update — changes the destination without a full
@@ -264,6 +347,9 @@ function initMapPanZoom() {
   // breaks clicks on hotspots/buttons. Track drag via window-level listeners
   // instead, which behaves identically for mouse and touch without that bug.
   wrap.addEventListener('pointerdown', e => {
+    // Ignore gestures that start on the location list (or any button in it) —
+    // otherwise dragging to scroll the list also pans the map underneath it.
+    if (e.target.closest('.location-list')) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     dragged = false;
     wrap.classList.add('grabbing');
@@ -300,6 +386,7 @@ function initMapPanZoom() {
   window.addEventListener('pointercancel', endPointer, { signal });
 
   wrap.addEventListener('wheel', e => {
+    if (e.target.closest('.location-list')) return;
     e.preventDefault();
     const rect = wrap.getBoundingClientRect();
     const factor = Math.exp(-e.deltaY * 0.0015);
@@ -327,13 +414,21 @@ function initMapPanZoom() {
 function heroSelect() {
   const hero = currentHero();
   app.innerHTML = frame('H234 // HERO SELECT', `<section class="hero-select">
-    <div class="screen-heading compact"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR HERO</span><h1>HERO SELECT</h1></div></div>
-    <div class="howto"><strong>HOW TO PLAY</strong><p>Jump ← LEFT, ↑ FORWARD, or → RIGHT to match the lit side. Time it to the beat — chain hits for a bigger combo. Land PERFECTs for the top S rank. Double-tap a hero to select and jump straight in.</p></div>
+    <div class="screen-heading compact"><button class="icon-btn" data-action="map">‹</button><div><span>CHOOSE YOUR HERO</span><h1>CHOOSE YOUR DANCER</h1></div></div>
+    <div class="howto"><strong>HOW TO PLAY</strong><p>Jump ← LEFT, ↑ FORWARD, or → RIGHT to match the direction on the lit prompt card. Time it to the beat. Make chain hits to score a bigger combo. Land as many PERFECTs as you can for the top S rank. Double-tap a hero to select and jump straight in.</p></div>
     <div class="hero-carousel" id="heroCarousel">
-      ${heroes.map(h => `<button class="hero-card ${hero.id === h.id ? 'chosen' : ''}" data-hero="${h.id}"><img src="${h.image}"><strong>${h.name}</strong><small>PRESET HERO</small></button>`).join('')}
-      <button class="hero-card create-card ${hero.src === 'custom' ? 'chosen' : ''}" data-action="create"><div class="upload-orb">↑</div><strong>CREATE YOUR HERO</strong><small>UPLOAD YOUR EMAILED CHARACTER</small></button>
+      ${heroes.map(h => `<button class="hero-card ${hero.id === h.id ? 'chosen' : ''}" data-hero="${h.id}"><img src="${h.image}"><strong>${h.name}</strong></button>`).join('')}
     </div>
-    <div class="selection"><div><span>SELECTED</span><strong id="selectedHeroName">${hero.name}</strong></div><button class="primary" data-action="battle">CONTINUE →</button></div>
+    <div class="selection">
+      <div><span>SELECTED</span><strong id="selectedHeroName">${hero.name}</strong></div>
+      <div class="selection-actions">
+        <div class="carousel-nav">
+          <button data-action="hero-prev" title="Scroll left">‹</button>
+          <button data-action="hero-next" title="Scroll right">›</button>
+        </div>
+        <button class="primary" data-action="battle">CONTINUE →</button>
+      </div>
+    </div>
   </section>`, true);
 }
 
@@ -362,6 +457,7 @@ function battleScreen() {
   const h = currentHero();
   const loc = locations.find(l => l.id === state.location) || locations[0];
   const symbols = LANE_SYMBOLS[loc.difficulty] || LANE_SYMBOLS.MEDIUM;
+  const isTutorial = loc.difficulty === 'TUTORIAL';
   // Prompt (cue) and controls (input) are deliberately separate elements now —
   // prompt tiles up top just flash, control buttons down below are what's tappable.
   app.innerHTML = frame('H234 // DANCE BATTLE', `<section class="battle">
@@ -376,6 +472,14 @@ function battleScreen() {
     <div class="hero-stage">
       <img class="board-hero" id="boardHero" src="${h.image}">
       <div id="feedback" class="feedback"></div>
+      ${isTutorial ? `<div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-card">
+          <strong>WELCOME TO H234</strong>
+          <p>When a side lights up, jump that direction before it fades out. Press ${symbols.join(' or ')} — on a keyboard that's the matching arrow keys.</p>
+          <p>Time your jump close to the flash for a PERFECT. Chain hits in a row to build your combo score.</p>
+          <button class="primary" data-action="tutorial-start">GOT IT — START →</button>
+        </div>
+      </div>` : ''}
     </div>
     <div class="controls-row">
       ${symbols.map((sym, l) => `<button class="ctrl-btn" data-lane-btn="${l}">${sym}</button>`).join('')}
@@ -383,7 +487,7 @@ function battleScreen() {
     <div class="progress"><div id="progress-fill"></div></div>
     <small>${state.sound ? 'AUDIO ACTIVE' : 'AUDIO OFF'} // JUMP TO THE LIT SIDE ON THE BEAT</small>
   </section>`, true);
-  startBattle(loc, symbols);
+  if (!isTutorial) startBattle(loc, symbols);
 }
 
 function startBattle(loc, symbols) {
@@ -392,7 +496,7 @@ function startBattle(loc, symbols) {
     start: performance.now(), elapsed: 0, score: 0, combo: 0, maxCombo: 0,
     counts: { PERFECT: 0, GOOD: 0, MISS: 0 }, used: new Set(), raf: null,
     windows: DIFFICULTY_WINDOWS[loc.difficulty] || DIFFICULTY_WINDOWS.MEDIUM,
-    chart: chartFor(loc.difficulty), symbols, length: battleLengthFor(loc.difficulty),
+    chart: chartForLocation(loc), symbols, length: battleLengthForLocation(loc),
     promptEls: symbols.map((_, l) => document.querySelector(`[data-prompt="${l}"]`)),
     controlEls: symbols.map((_, l) => document.querySelector(`[data-lane-btn="${l}"]`))
   };
@@ -491,12 +595,12 @@ function results() {
   const tiers = [{ r: 'S', min: 90 }, { r: 'A', min: 75 }, { r: 'B', min: 60 }, { r: 'C', min: 0 }];
   const rank = tiers.find(t => r.accuracy >= t.min).r;
   app.innerHTML = frame('H234 // RESULTS', `<section class="results">
-    <div class="result-head"><img src="${A}h234-logo-gold.png"><span>RUN COMPLETE</span><h1>ZONE CLEARED</h1></div>
+    <div class="result-head"><img src="${A}h234-logo-gold.png"><span>DANCE BATTLE COMPLETE</span><h1>ZONE CLEARED</h1></div>
     <div class="rank">${rank}<small>RANK</small></div>
     <div class="rank-legend">
       ${tiers.map(t => `<span class="${t.r === rank ? 'current' : ''}">${t.r} <em>${t.min}%+</em></span>`).join('')}
     </div>
-    <p class="rank-note">Rank is based on accuracy — PERFECT hits count full, GOOD hits count half, MISS counts zero.</p>
+    <p class="rank-note">Rank is based on accuracy — PERFECT hits help you score Full Points, GOOD hits count half, MISS counts zero.</p>
     <div class="stats">
       <div><span>SCORE</span><strong>${r.score.toLocaleString()}</strong></div>
       <div><span>ACCURACY</span><strong>${r.accuracy}%</strong></div>
@@ -592,6 +696,21 @@ function stopMusic() {
   if (audioEl) { audioEl.pause(); audioEl = null; }
 }
 
+// Map screen has its own separate looping background track (map.mp3), kept
+// independent of the battle-music system above so navigating map -> battle
+// -> map cleanly starts/stops the right track each time.
+let mapAudioEl = null;
+function startMapMusic() {
+  if (!state.sound || mapAudioEl) return;
+  const el = new Audio(`${A}map.mp3`);
+  el.volume = 0.4;
+  el.loop = true;
+  el.play().then(() => { mapAudioEl = el; }).catch(() => {});
+}
+function stopMapMusic() {
+  if (mapAudioEl) { mapAudioEl.pause(); mapAudioEl = null; }
+}
+
 
 /* ---------- events ---------- */
 app.addEventListener('click', e => {
@@ -607,6 +726,7 @@ app.addEventListener('click', e => {
   if (action === 'recenter') {
     sfxClick();
     window.__mapRecenter && window.__mapRecenter();
+    notify('VIEW RESET');
     return;
   }
   if (action === 'prev-location' || action === 'next-location') {
@@ -617,13 +737,30 @@ app.addEventListener('click', e => {
     selectLocationLight(next.id);
     return;
   }
+  if (action === 'hero-prev' || action === 'hero-next') {
+    sfxClick();
+    const el = document.getElementById('heroCarousel');
+    const card = el?.querySelector('.hero-card');
+    const step = card ? card.getBoundingClientRect().width + 14 : 200;
+    el?.scrollBy({ left: action === 'hero-next' ? step : -step, behavior: 'smooth' });
+    return;
+  }
+  if (action === 'tutorial-start') {
+    sfxClick();
+    document.getElementById('tutorialOverlay')?.remove();
+    const loc = locations.find(l => l.id === state.location) || locations[0];
+    const symbols = LANE_SYMBOLS[loc.difficulty] || LANE_SYMBOLS.MEDIUM;
+    startBattle(loc, symbols);
+    return;
+  }
   if (action === 'sound' && state.screen === 'map') {
     sfxClick();
     state.sound = !state.sound;
-    if (!state.sound) stopMusic();
+    if (!state.sound) { stopMusic(); stopMapMusic(); } else { startMapMusic(); }
     save();
     const btn = e.target.closest('[data-action="sound"]');
     if (btn) { btn.textContent = state.sound ? '◉' : '○'; btn.title = (state.sound ? 'Mute' : 'Unmute') + ' sound'; }
+    notify(state.sound ? 'SOUND ON' : 'SOUND OFF');
     return;
   }
 
@@ -636,7 +773,7 @@ app.addEventListener('click', e => {
     if (action === 'battle' && !battle) state.screen = 'battle';
     if (action === 'quit') { stopMusic(); battle = null; state.screen = 'map'; }
     if (action === 'use-custom' && state.custom) { state.hero = { id: 'custom', name: 'MY HERO', src: 'custom', image: state.custom }; state.screen = 'heroes'; }
-    if (action === 'sound') { state.sound = !state.sound; if (!state.sound) stopMusic(); }
+    if (action === 'sound') { state.sound = !state.sound; if (!state.sound) stopMusic(); notify(state.sound ? 'SOUND ON' : 'SOUND OFF'); }
     if (action === 'settings') state.screen = 'settings';
     if (action === 'reset') { state.custom = ''; state.hero = heroes[0]; }
     render();

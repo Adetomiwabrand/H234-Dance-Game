@@ -6,16 +6,18 @@ button{font:inherit;color:inherit;cursor:pointer}
 .app{min-height:100vh;min-height:100dvh}
 .frame{min-height:100vh;min-height:100dvh;padding:18px;padding-bottom:max(18px,env(safe-area-inset-bottom));position:relative}
 .frame.bare{padding:0;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column}
-.frame.bare>.topbar{padding:0 14px;flex:none}
 .frame:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;background:repeating-linear-gradient(0deg,transparent 0 3px,#fff 4px);z-index:20}
-.topbar{height:34px;display:flex;justify-content:space-between;align-items:center;color:#7f93d9;font-family:var(--font-arcade);font-size:8px;letter-spacing:1px;border-bottom:1px solid #16224f}
 .boot{min-height:calc(100dvh - 70px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px calc(24px + env(safe-area-inset-bottom))}
 .boot-card{width:min(680px,90vw);text-align:center;border:2px solid #1e2d63;background:linear-gradient(#0c1230,#080c1e);padding:38px;box-shadow:0 0 90px #1338b855,inset 0 0 40px #000}
 .boot-card img{width:100%;object-fit:contain}
-.boot-card .level-one{max-height:230px}
+.boot-card .level-one{max-height:270px}
 .boot-card .enter-house-text{font-family:var(--font-arcade);font-size:15px;letter-spacing:2px;color:#fff;margin:20px 0 0;line-height:1.7;text-shadow:0 0 18px #4570ff99}
 .boot-card p{font-family:var(--font-arcade);font-size:10px;letter-spacing:3px;color:#ff9b4b;margin-top:20px;line-height:1.8}
 .boot-card small{display:block;color:#ff9b4b;margin-top:18px;font-family:var(--font-arcade);font-size:7px;letter-spacing:1px;line-height:1.9}
+.side-room-banner{display:block;max-width:min(680px,90vw);margin:18px auto 0;text-align:center;padding:12px 18px;border:2px solid #ff9b4b55;background:#080c1ecf;font-family:var(--font-arcade);font-size:8px;letter-spacing:.5px;color:#ff9b4b;text-decoration:none;line-height:1.8}
+.side-room-banner:hover{border-color:#ff9b4b;background:#0d1330}
+#toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#0a0f22ee;border:2px solid #ff9b4b;color:#fff;font-family:var(--font-arcade);font-size:9px;letter-spacing:1px;padding:12px 20px;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:9999}
+#toast.show{opacity:1;transform:translate(-50%,0)}
 .primary,.icon-btn,.hud-buttons button,.result-actions button,.battle-hud button,.setting-row button{border:1px solid #16224f;background:#0d1226;color:#c7d0f5;min-height:46px;padding:0 20px;display:inline-flex;gap:10px;align-items:center;justify-content:center;font-family:var(--font-block);font-size:11px;letter-spacing:1px}
 .primary{background:#d46d1e;color:#0b0705;border-color:#ff9b4b;box-shadow:0 0 25px #a7461466}
 .primary:disabled{opacity:.35;cursor:not-allowed}
@@ -24,7 +26,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .map-header{flex:none;padding:14px 14px 0}
 .map-title-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .map-title{display:flex;align-items:center;gap:14px;padding:8px 12px;background:#080c1ecf;border:2px solid #1e2d63;font-family:var(--font-arcade);font-size:9px;letter-spacing:1px}
-.map-title img{width:100px;height:42px;object-fit:contain}
+.map-title img{width:120px;height:50px;object-fit:contain}
 .hud-buttons{display:flex;gap:8px}
 .hud-buttons button{width:44px;padding:0;background:#0a0f22ee}
 .map-hint{margin-top:10px;display:flex;align-items:center;gap:8px;font-family:var(--font-arcade);font-size:7px;letter-spacing:1px;color:#c7d0f5;background:#080c1ef2;border:2px solid #ff9b4b55;padding:9px 14px}
@@ -44,26 +46,25 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hotspot b{display:block;font-family:var(--font-arcade);font-size:7px;color:#ff9b4b;margin-top:4px}
 .hotspot:hover .tag,.hotspot.selected .tag{opacity:1;transform:translateY(0)}
 .hotspot.selected .pin{transform:rotate(-45deg) scale(1.35);box-shadow:0 0 18px #ff9948cc}
+.hotspot.diff-tutorial .pin{background:#2fd4c7;box-shadow:0 0 12px #2fd4c7aa}
 .hotspot.diff-easy .pin{background:#5fae52;box-shadow:0 0 12px #5fae52aa}
 .hotspot.diff-medium .pin{background:#d4a01e;box-shadow:0 0 12px #d4a01eaa}
 .hotspot.diff-hard .pin{background:#c73a3a;box-shadow:0 0 12px #c73a3aaa}
 
 /* Right-side location list — lives inside the bordered map box, grouped by
    difficulty, always reachable via the toggle button. */
-.location-list{position:absolute;top:10px;right:10px;bottom:10px;width:220px;background:#080c1ef5;border:2px solid #1e2d63;z-index:6;overflow-y:auto;padding:12px;transform:translateX(0);transition:transform .25s ease}
+.location-list{position:absolute;top:10px;right:10px;bottom:10px;width:220px;background:#080c1ef5;border:2px solid #1e2d63;z-index:6;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:12px;transform:translateX(calc(100% + 14px));transition:transform .25s ease;box-shadow:-10px 0 30px #000000aa}
+.location-list.open{transform:translateX(0)}
 .location-list-head{font-family:var(--font-arcade);font-size:8px;color:#7f93d9;letter-spacing:1px;padding-bottom:10px;border-bottom:1px solid #16224f;margin-bottom:8px}
 .location-tier{font-family:var(--font-arcade);font-size:7px;letter-spacing:2px;color:#ff9b4b;margin:12px 0 6px}
 .location-row{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid transparent;background:none;padding:8px 6px;font-family:var(--font-block);font-size:10px;color:#c7d0f5}
 .location-row .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.location-row.diff-tutorial .dot{background:#2fd4c7;box-shadow:0 0 8px #2fd4c7aa}
 .location-row.diff-easy .dot{background:#5fae52;box-shadow:0 0 8px #5fae52aa}
 .location-row.diff-medium .dot{background:#d4a01e;box-shadow:0 0 8px #d4a01eaa}
 .location-row.diff-hard .dot{background:#c73a3a;box-shadow:0 0 8px #c73a3aaa}
 .location-row:hover{background:#0d1330}
 .location-row.selected{border-color:#ff9b4b;background:#1a1330;color:#fff}
-@media(max-width:900px){
-.location-list{transform:translateX(calc(100% + 10px))}
-.location-list.open{transform:translateX(0)}
-}
 
 .map-info{flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:0 14px 14px;padding:16px;background:#080c1eef;border:2px solid #1e2d63}
 .map-info span,.map-info em{display:block;color:#7f93d9;font-family:var(--font-arcade);font-size:8px}
@@ -76,7 +77,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 @media(max-width:640px){
 .map-header{padding:10px 10px 0}
 .map-title{font-size:7px;padding:6px 8px;gap:8px}
-.map-title img{width:54px;height:24px}
+.map-title img{width:64px;height:28px}
 .map-title div{display:none}
 .hud-buttons{gap:6px}
 .hud-buttons button{width:36px;min-height:36px}
@@ -99,14 +100,18 @@ button{font:inherit;color:inherit;cursor:pointer}
 .howto{flex:none;margin:14px 20px 0;padding:12px 16px;border:2px solid #16224f;background:#0a0f22;border-left:4px solid #ff9b4b}
 .howto strong{display:block;font-family:var(--font-arcade);font-size:9px;color:#ff9b4b;letter-spacing:1px}
 .howto p{margin:8px 0 0;font-size:11px;color:#c7d0f5;line-height:1.7}
-.hero-carousel{flex:1;min-height:0;display:flex;align-items:stretch;gap:14px;overflow-x:auto;overflow-y:hidden;padding:16px 20px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
-.hero-carousel .hero-card{flex:0 0 auto;width:180px;scroll-snap-align:center}
+.hero-carousel{flex:1;min-height:0;display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,1fr);gap:12px 14px;overflow-x:auto;overflow-y:hidden;padding:16px 20px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.hero-carousel .hero-card{width:170px;scroll-snap-align:center}
 .selection{flex:none;display:flex;justify-content:space-between;align-items:center;padding:16px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid #16224f;background:#080c1e}
+.selection-actions{display:flex;align-items:center;gap:14px}
+.carousel-nav{display:flex;gap:8px}
+.carousel-nav button{width:38px;min-height:38px;padding:0;font-size:18px;border:2px solid #16224f;background:#0d1226;color:#c7d0f5;display:inline-flex;align-items:center;justify-content:center}
+.carousel-nav button:hover{border-color:#ff9b4b;color:#ff9b4b}
 .selection span{display:block;font-family:var(--font-arcade);font-size:7px;color:#5670c2}
 .selection strong{font-family:var(--font-block);font-size:14px;color:#fff}
 
-.hero-card{min-height:280px;border:2px solid #16224f;background:#0a0f22;padding:10px;text-align:left;position:relative}
-.hero-card img{width:100%;height:190px;object-fit:contain;background:#0d1330}
+.hero-card{min-height:150px;border:2px solid #253166;background:#141c40;padding:8px;text-align:left;position:relative}
+.hero-card img{width:100%;height:95px;object-fit:contain;background:#2a3672;border-radius:2px}
 .hero-card strong{display:block;margin:10px 8px 0;font-family:var(--font-block);font-size:12px;color:#fff}
 .hero-card small{display:block;margin:6px 8px 0;font-family:var(--font-arcade);font-size:7px;color:#5670c2}
 .hero-card.chosen{border-color:#f0842c;box-shadow:0 0 25px #c95c1f44}
@@ -137,6 +142,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 /* Hero stage — the blue "gameplay" canvas, fills whatever space is left */
 .hero-stage{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 38%,#4570ff 0%,#2756fa 45%,#1338b8 78%,#081d6b 100%);border:1px solid #0a154d;border-radius:16px;box-shadow:inset 0 0 90px #081d6bcc;overflow:hidden}
+.tutorial-overlay{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:#050a1cd9;padding:20px}
+.tutorial-card{position:relative;max-width:420px;background:linear-gradient(135deg,#0c1230,#080c1e);border:2px solid #ff9b4b;padding:26px;text-align:center}
+.tutorial-card strong{display:block;font-family:var(--font-block);font-size:16px;color:#fff;letter-spacing:1px}
+.tutorial-card p{font-family:var(--font-arcade);font-size:9px;line-height:1.9;color:#c7d0f5;margin:16px 0 0}
+.tutorial-card .primary{margin-top:20px;width:100%}
 .board-hero{max-width:56%;max-height:82%;object-fit:contain;filter:drop-shadow(0 18px 20px #000)}
 .board-hero.anim-left{animation:jumpLeft .38s ease}
 .board-hero.anim-right{animation:jumpRight .38s ease}
@@ -164,7 +174,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .battle>small{flex:none;font-family:var(--font-arcade);font-size:6px;color:#3d4d99;text-align:center;letter-spacing:1px}
 
 .results{max-width:900px;margin:60px auto;text-align:center}
-.result-head img{width:130px;height:60px;object-fit:contain}
+.result-head img{width:155px;height:72px;object-fit:contain}
 .result-head span{display:block;font-family:var(--font-arcade);font-size:8px;color:#ff9b4b}
 .result-head h1{font-family:var(--font-block);font-size:23px;letter-spacing:1px;color:#fff}
 .rank{font-family:var(--font-block);font-size:100px;color:#ff9b4b;text-shadow:0 0 40px #ff8a2766}
@@ -188,7 +198,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 @media(max-width:800px){
 .hero-carousel .hero-card{width:150px}
-.hero-card img{height:150px}
+.hero-card{min-height:135px}
+.hero-card img{height:85px}
 .create-layout{grid-template-columns:1fr}
 .dropzone{min-height:320px}
 .stats{grid-template-columns:repeat(3,1fr)}
@@ -201,8 +212,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .howto p{font-size:10px}
 .hero-carousel{gap:10px;padding:12px 14px}
 .hero-carousel .hero-card{width:128px}
-.hero-card{min-height:220px;padding:6px}
-.hero-card img{height:130px}
+.hero-card{min-height:118px;padding:6px}
+.hero-card img{height:68px}
 .selection{gap:10px;padding:12px 14px calc(12px + env(safe-area-inset-bottom))}
 .selection strong{font-size:10px}
 .stats{grid-template-columns:repeat(2,1fr)}
@@ -227,22 +238,26 @@ button{font:inherit;color:inherit;cursor:pointer}
 .howto p{font-size:9px;line-height:1.5}
 .hero-carousel{padding:10px 16px}
 .hero-carousel .hero-card{width:120px}
-.hero-card img{height:110px}
+.hero-card{min-height:108px}
+.hero-card img{height:60px}
 }
 
 /* ---------- retro panel treatment: thicker border + corner brackets,
    applied to every card/panel across the UI ---------- */
-.panel-screen,.hero-card,.stats>div,.map-info,.howto,.location-list,.boot-card,
-.setting-row,.dropzone{position:relative}
+.panel-screen,.hero-card,.stats>div,.map-info,.howto,.boot-card,
+.setting-row,.dropzone,.tutorial-card{position:relative}
 .panel-screen:before,.panel-screen:after,.hero-card:before,.hero-card:after,
 .stats>div:before,.stats>div:after,.map-info:before,.map-info:after,
 .howto:before,.howto:after,.location-list:before,.location-list:after,
-.boot-card:before,.boot-card:after,.dropzone:before,.dropzone:after{
+.boot-card:before,.boot-card:after,.dropzone:before,.dropzone:after,
+.tutorial-card:before,.tutorial-card:after{
   content:"";position:absolute;width:14px;height:14px;pointer-events:none;z-index:2}
 .panel-screen:before,.hero-card:before,.stats>div:before,.map-info:before,
-.howto:before,.location-list:before,.boot-card:before,.dropzone:before{
+.howto:before,.location-list:before,.boot-card:before,.dropzone:before,
+.tutorial-card:before{
   top:-2px;left:-2px;border-top:2px solid #ff9b4b;border-left:2px solid #ff9b4b}
 .panel-screen:after,.hero-card:after,.stats>div:after,.map-info:after,
-.howto:after,.location-list:after,.boot-card:after,.dropzone:after{
+.howto:after,.location-list:after,.boot-card:after,.dropzone:after,
+.tutorial-card:after{
   bottom:-2px;right:-2px;border-bottom:2px solid #ff9b4b;border-right:2px solid #ff9b4b}
 .hero-card:before,.hero-card:after,.stats>div:before,.stats>div:after{width:10px;height:10px}
