@@ -232,7 +232,7 @@ function map() {
             <button data-action="settings" title="Settings">⚙</button>
           </div>
         </div>
-        <div class="map-hint"><span class="pulse-dot"></span>DRAG TO EXPLORE • SCROLL / PINCH TO ZOOM • TAP A SITE TO SELECT IT</div>
+        <div class="map-hint"><span class="pulse-dot"></span>USE THE ARROW BUTTONS BELOW (< >) OR THE MENU BUTTON TO BROWSE DIFFERENT LOCATIONS. YOU CAN ALSO DRAG AND ZOOM FOR MORE ACCESS.</div>
       </div>
       <div class="mapwrap" id="mapwrap">
         <div class="mapstage" id="mapstage">
