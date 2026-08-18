@@ -30,11 +30,8 @@ const heroes = [
   { id: 'tobi', name: 'TOBI', src: 'preset', image: A + 'heroes/tobi.png' },
   { id: 'zaam', name: 'ZÀÁM', src: 'preset', image: A + 'heroes/zaam.png' },
   { id: 'oma-bear', name: 'OMA BEAR', src: 'preset', image: A + 'heroes/oma-bear.png' },
-  { id: 'summer', name: 'SUMMER', src: 'preset', image: A + 'heroes/summer.png' },
-  { id: 'oma', name: 'OMA', src: 'preset', image: A + 'heroes/oma.png' },
-  { id: 'jujuranger', name: 'JUJURANGER', src: 'preset', image: A + 'heroes/jujuranger.png' }
+  { id: 'summer', name: 'SUMMER', src: 'preset', image: A + 'heroes/summer.png' }
 ];
-
 
 // Coordinates are % of the real map artwork (850x680), hand-mapped to the
 // actual painted location markers so hotspots sit exactly where they belong.
@@ -232,7 +229,7 @@ function map() {
             <button data-action="settings" title="Settings">⚙</button>
           </div>
         </div>
-        <div class="map-hint"><span class="pulse-dot"></span>USE THE ARROW BUTTONS BELOW (< >) OR THE MENU BUTTON TO BROWSE DIFFERENT LOCATIONS. YOU CAN ALSO DRAG AND ZOOM FOR MORE ACCESS.</div>
+        <div class="map-hint"><span class="pulse-dot"></span>DRAG TO EXPLORE • SCROLL / PINCH TO ZOOM • TAP A SITE TO SELECT IT</div>
       </div>
       <div class="mapwrap" id="mapwrap">
         <div class="mapstage" id="mapstage">
@@ -609,6 +606,7 @@ function results() {
       <div><span>GOOD</span><strong>${r.counts.GOOD}</strong></div>
       <div><span>MISS</span><strong>${r.counts.MISS}</strong></div>
     </div>
+    <div class="ig-callout">📸 SCREENSHOT YOUR SCORE AND POST IT ON INSTAGRAM FOR A CHANCE TO WIN A FREE TICKET OR A DISCOUNT. HIGHEST SCORES WIN.</div>
     <div class="result-actions"><button class="primary" data-action="battle">↻ PLAY AGAIN</button><button data-action="map">⌖ BACK TO MAP</button></div>
   </section>`);
 }
@@ -699,13 +697,24 @@ function stopMusic() {
 // Map screen has its own separate looping background track (map.mp3), kept
 // independent of the battle-music system above so navigating map -> battle
 // -> map cleanly starts/stops the right track each time.
+// Tries both src/assets/audio/map.mp3 and src/assets/map.mp3 since either
+// is a reasonable place for it — whichever one actually exists will play.
 let mapAudioEl = null;
 function startMapMusic() {
   if (!state.sound || mapAudioEl) return;
-  const el = new Audio(`${A}map.mp3`);
-  el.volume = 0.4;
-  el.loop = true;
-  el.play().then(() => { mapAudioEl = el; }).catch(() => {});
+  const candidates = [`${A}audio/map.mp3`, `${A}map.mp3`];
+  const tryNext = i => {
+    if (i >= candidates.length) {
+      console.warn('[H234] map.mp3 not found at either', candidates.join(' or '), '— check the file is actually at one of those paths (case-sensitive) and was included in the deploy.');
+      return;
+    }
+    const el = new Audio(candidates[i]);
+    el.volume = 0.4;
+    el.loop = true;
+    el.addEventListener('error', () => tryNext(i + 1));
+    el.play().then(() => { mapAudioEl = el; }).catch(() => tryNext(i + 1));
+  };
+  tryNext(0);
 }
 function stopMapMusic() {
   if (mapAudioEl) { mapAudioEl.pause(); mapAudioEl = null; }
