@@ -30,7 +30,11 @@ const heroes = [
   { id: 'tobi', name: 'TOBI', src: 'preset', image: A + 'heroes/tobi.png' },
   { id: 'zaam', name: 'ZÀÁM', src: 'preset', image: A + 'heroes/zaam.png' },
   { id: 'oma-bear', name: 'OMA BEAR', src: 'preset', image: A + 'heroes/oma-bear.png' },
-  { id: 'summer', name: 'SUMMER', src: 'preset', image: A + 'heroes/summer.png' }
+  { id: 'summer', name: 'SUMMER', src: 'preset', image: A + 'heroes/summer.png' },
+  { id: 'jujuranger', name: 'JUJURANGER', src: 'preset', image: A + 'heroes/jujuranger.png' },
+  { id: 'alli', name: 'ALLI', src: 'preset', image: A + 'heroes/alli.png' },
+  { id: 'axara', name: 'AXARA', src: 'preset', image: A + 'heroes/axara.png' },
+  { id: 'proton', name: 'PROTON', src: 'preset', image: A + 'heroes/proton.png' }
 ];
 
 // Coordinates are % of the real map artwork (850x680), hand-mapped to the
